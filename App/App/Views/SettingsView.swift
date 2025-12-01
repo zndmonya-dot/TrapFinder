@@ -20,118 +20,91 @@ struct SettingsView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // プラン情報カード
-                        PlanInfoCard(
-                            plan: revenueCatService.currentPlan,
-                            remainingScans: revenueCatService.remainingFreeScans,
-                            onTap: {
+                        // サブスクリプションセクション
+                        SettingsSection(title: L10n.planManagement.text) {
+                            Button {
                                 showingPaywall = true
-                            }
-                        )
-                        
-                        // 一般設定セクション
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("一般")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(hex: "3D405B").opacity(0.6))
-                                .padding(.horizontal, 4)
-                            
-                            NavigationLink {
-                                LanguageSettingsView()
                             } label: {
-                                SettingsRow(icon: "globe", title: L10n.language.text, value: languageManager.currentLanguage.displayName)
+                                SettingsRow(
+                                    icon: "creditcard.fill",
+                                    title: L10n.planManagement.text,
+                                    value: revenueCatService.currentPlan == .standard ? L10n.standardPlan.text : L10n.freePlan.text,
+                                    iconColor: Color(hex: "2A9D8F"), // エメラルドグリーン
+                                    showDivider: false
+                                )
                             }
                         }
                         
-                        // プラン管理セクション
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("プラン管理")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(hex: "3D405B").opacity(0.6))
-                                .padding(.horizontal, 4)
-                            
-                            // プラン変更画面への導線
-                            Button {
-                                showingPaywall = true
+                        // 一般設定セクション
+                        SettingsSection(title: L10n.general.text) {
+                            NavigationLink {
+                                LanguageSettingsView()
                             } label: {
-                                SettingsRow(icon: "sparkles", title: L10n.upgradeToPro.text, iconColor: .orange)
-                            }
-                            
-                            Button {
-                                if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
-                                    UIApplication.shared.open(url)
-                                }
-                            } label: {
-                                SettingsRow(icon: "creditcard", title: "サブスクリプションの管理")
-                            }
-                            
-                            Button {
-                                revenueCatService.restorePurchases { _ in }
-                            } label: {
-                                SettingsRow(icon: "arrow.clockwise", title: L10n.restorePurchase.text)
+                                SettingsRow(
+                                    icon: "globe",
+                                    title: L10n.language.text,
+                                    value: languageManager.currentLanguage.displayName,
+                                    iconColor: Color(hex: "457B9D"), // ブルー
+                                    showDivider: false
+                                )
                             }
                         }
                         
                         // サポートセクション
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("サポート")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(hex: "3D405B").opacity(0.6))
-                                .padding(.horizontal, 4)
-                            
-                            NavigationLink {
-                                Text("利用規約") // 本来はWebViewなど
-                                    .navigationTitle(L10n.terms.text)
-                            } label: {
-                                SettingsRow(icon: "doc.text", title: L10n.terms.text)
-                            }
-                            
-                            NavigationLink {
-                                Text("プライバシーポリシー")
-                                    .navigationTitle(L10n.privacy.text)
-                            } label: {
-                                SettingsRow(icon: "hand.raised", title: L10n.privacy.text)
+                        SettingsSection(title: L10n.support.text) {
+                            VStack(spacing: 0) {
+                                NavigationLink {
+                                    TermsView()
+                                        .navigationTitle(L10n.terms.text)
+                                } label: {
+                                    SettingsRow(
+                                        icon: "doc.text.fill",
+                                        title: L10n.terms.text,
+                                        iconColor: Color(hex: "E07A5F"), // テラコッタ
+                                        showDivider: true
+                                    )
+                                }
+                                
+                                NavigationLink {
+                                    PrivacyPolicyView()
+                                        .navigationTitle(L10n.privacy.text)
+                                } label: {
+                                    SettingsRow(
+                                        icon: "hand.raised.fill",
+                                        title: L10n.privacy.text,
+                                        iconColor: Color(hex: "E07A5F"),
+                                        showDivider: false
+                                    )
+                                }
                             }
                         }
                         
                         // アプリ情報セクション
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(L10n.appInfo.text)
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(hex: "3D405B").opacity(0.6))
-                                .padding(.horizontal, 4)
-                            
+                        SettingsSection(title: L10n.appInfo.text) {
                             VStack(spacing: 0) {
-                                HStack {
-                                    Text(L10n.version.text)
-                                        .font(.system(.body, design: .rounded))
-                                        .foregroundColor(Color(hex: "3D405B"))
-                                    Spacer()
-                                    Text("1.0.0")
-                                        .font(.system(.body, design: .rounded))
-                                        .foregroundColor(Color(hex: "3D405B").opacity(0.7))
-                                }
-                                .padding()
-                                Divider()
-                                HStack {
-                                    Text(L10n.developer.text)
-                                        .font(.system(.body, design: .rounded))
-                                        .foregroundColor(Color(hex: "3D405B"))
-                                    Spacer()
-                                    Text("Contract Companion Team")
-                                        .font(.system(.body, design: .rounded))
-                                        .foregroundColor(Color(hex: "3D405B").opacity(0.7))
-                                }
-                                .padding()
+                                SettingsRow(
+                                    icon: "info.circle.fill",
+                                    title: L10n.version.text,
+                                    value: "1.0.0",
+                                    iconColor: Color(hex: "3D405B"), // ダークブルー
+                                    showChevron: false,
+                                    showDivider: true
+                                )
+                                
+                                SettingsRow(
+                                    icon: "person.2.fill",
+                                    title: L10n.developer.text,
+                                    value: "Contract Companion Team",
+                                    iconColor: Color(hex: "3D405B"),
+                                    showChevron: false,
+                                    showDivider: false
+                                )
                             }
-                            .background(Color.white)
-                            .cornerRadius(16)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                         
                         Spacer(minLength: 40)
                     }
-                    .padding(24)
+                    .padding(.vertical, 24) // 全体のpaddingを変更
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -160,65 +133,34 @@ struct SettingsView: View {
     }
 }
 
-struct PlanInfoCard: View {
-    let plan: UserPlan
-    let remainingScans: Int
-    var onTap: () -> Void
+// PlanSettingsView は不要になったため削除
+// PlanStatusCard も PaywallView で代用するため削除してもよいが、将来のために残すか、あるいはPaywallViewのデザインに統一するか。
+// 今回はPaywallViewを直接呼ぶので、ここにあるPlanSettingsViewは削除します。
+
+struct SettingsSection<Content: View>: View {
+    let title: String
+    let content: Content
     
-    var planColor: Color {
-        switch plan {
-        case .free: return Color(hex: "81B29A") // Sage Green
-        case .standard: return Color(hex: "E07A5F") // Terracotta
-        }
-    }
-    
-    var planIcon: String {
-        switch plan {
-        case .free: return "leaf.fill"
-        case .standard: return "star.circle.fill"
-        }
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
     }
     
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(planColor)
-                        .frame(width: 50, height: 50)
-                    
-                    Image(systemName: planIcon)
-                        .font(.system(size: 24))
-                        .foregroundColor(.white)
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(plan.name)
-                        .font(.system(.title3, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundColor(Color(hex: "3D405B"))
-                    
-                    if plan == .free {
-                        Text("残り \(remainingScans) 回")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundColor(remainingScans > 0 ? Color(hex: "3D405B").opacity(0.7) : Color.red)
-                    } else {
-                        Text("スキャン回数無制限")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundColor(Color(hex: "3D405B").opacity(0.7))
-                    }
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .foregroundColor(Color(hex: "3D405B").opacity(0.3))
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(Color(hex: "3D405B").opacity(0.6))
+                .padding(.horizontal, 16)
+            
+            VStack(spacing: 0) {
+                content
             }
-            .padding(20)
             .background(Color.white)
-            .cornerRadius(20)
-            .shadow(color: planColor.opacity(0.15), radius: 10, x: 0, y: 5)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
         }
+        .padding(.horizontal, 24)
     }
 }
 
@@ -227,34 +169,48 @@ struct SettingsRow: View {
     let title: String
     var value: String? = nil
     var iconColor: Color = Color(hex: "E07A5F")
+    var showChevron: Bool = true
+    var showDivider: Bool = false
     
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(iconColor)
-                .frame(width: 24)
-            
-            Text(title)
-                .font(.system(.body, design: .rounded))
-                .foregroundColor(Color(hex: "3D405B"))
-            
-            Spacer()
-            
-            if let value = value {
-                Text(value)
+        VStack(spacing: 0) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.15))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .font(.system(size: 14))
+                        .foregroundColor(iconColor)
+                }
+                
+                Text(title)
                     .font(.system(.body, design: .rounded))
-                    .foregroundColor(Color(hex: "3D405B").opacity(0.6))
+                    .foregroundColor(Color(hex: "3D405B"))
+                
+                Spacer()
+                
+                if let value = value {
+                    Text(value)
+                        .font(.system(.body, design: .rounded))
+                        .foregroundColor(Color(hex: "3D405B").opacity(0.6))
+                }
+                
+                if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(Color(hex: "3D405B").opacity(0.3))
+                }
             }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
             
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(Color(hex: "3D405B").opacity(0.3))
+            if showDivider {
+                Divider()
+                    .padding(.leading, 64)
+            }
         }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .contentShape(Rectangle()) // タップ領域を確保
     }
 }
 

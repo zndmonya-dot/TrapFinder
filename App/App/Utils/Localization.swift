@@ -81,7 +81,7 @@ enum L10n {
     static var webPageDesc: LocalizedString { LocalizedString(ja: "URLから記事をチェック", en: "Check via URL") }
     static var textInput: LocalizedString { LocalizedString(ja: "テキスト入力", en: "Text Input") }
     static var textInputDesc: LocalizedString { LocalizedString(ja: "文章を直接貼り付け", en: "Paste text directly") }
-    static var dataPrivacy: LocalizedString { LocalizedString(ja: "読み取ったデータは保存されません", en: "Scanned data is not saved") }
+    static var dataPrivacy: LocalizedString { LocalizedString(ja: "データは保存されず、AI学習にも使用されません", en: "Data is not saved or used for AI training") }
     static var readComplete: LocalizedString { LocalizedString(ja: "読み取り完了", en: "Scan Complete") }
     
     // Analysis Result
@@ -131,8 +131,9 @@ enum L10n {
     static var unlimitedScans: LocalizedString { LocalizedString(ja: "回数無制限", en: "Unlimited Scans") }
     static var standardAI: LocalizedString { LocalizedString(ja: "標準AI (GPT-4o-mini)", en: "Standard AI") }
     static var highPerformanceAI: LocalizedString { LocalizedString(ja: "高性能AI (GPT-4o)", en: "High-Performance AI") }
-    static var charLimit20k: LocalizedString { LocalizedString(ja: "20,000文字まで", en: "Up to 20k chars") }
-    static var charLimit50k: LocalizedString { LocalizedString(ja: "50,000文字まで", en: "Up to 50k chars") }
+    static var charLimit10k: LocalizedString { LocalizedString(ja: "1回 10,000文字まで", en: "10k chars / scan") }
+    static var charLimit100k: LocalizedString { LocalizedString(ja: "1回 100,000文字まで", en: "100k chars / scan") }
+    static var charLimit50k: LocalizedString { LocalizedString(ja: "1回 50,000文字まで", en: "50k chars / scan") }
     static var detailedAnalysis: LocalizedString { LocalizedString(ja: "より詳細なAI解説", en: "Detailed AI Analysis") }
     static var proFeatures: LocalizedString { LocalizedString(ja: "高性能AI + 無制限 (モデル選択可)", en: "High-Performance + Unlimited (Selectable)") }
     
@@ -153,4 +154,48 @@ enum L10n {
     static var legalHeader4: LocalizedString { LocalizedString(ja: "4. 機密情報の扱い", en: "4. Data Privacy") }
     static var legalText4: LocalizedString { LocalizedString(ja: "読み取られたデータはOpenAI APIを通じて処理されます。機密性の高い情報の入力には十分ご注意ください。", en: "Data is processed via OpenAI API. Please be careful with confidential information.") }
     static var agreeButton: LocalizedString { LocalizedString(ja: "上記に同意して利用を開始する", en: "I Agree & Start Using") }
+    
+    // Settings View
+    static var general: LocalizedString { LocalizedString(ja: "一般", en: "General") }
+    static var planManagement: LocalizedString { LocalizedString(ja: "プラン管理", en: "Plan Management") }
+    // selectPlanは削除（重複のため）
+    static var support: LocalizedString { LocalizedString(ja: "サポート", en: "Support") }
+    static var remainingScans: LocalizedString { LocalizedString(ja: "残り %d 回", en: "%d remaining") }
+    static var unlimitedScansText: LocalizedString { LocalizedString(ja: "スキャン回数無制限", en: "Unlimited Scans") }
+    
+    // Scanner View
+    static var tokenLimitTitle: LocalizedString { LocalizedString(ja: "文字数が多すぎます", en: "Text Too Long") }
+    static var tokenLimitMessage: LocalizedString { LocalizedString(ja: "読み取った文字数が100,000文字を超えています。\nすべて解析すると時間がかかり、エラーになる可能性があります。\n\n先頭の100,000文字だけ解析しますか？", en: "The scanned text exceeds 100,000 characters.\nAnalyzing all of it may take time and could cause errors.\n\nWould you like to analyze only the first 100,000 characters?") }
+    static var analyzeTruncated: LocalizedString { LocalizedString(ja: "先頭のみ解析する", en: "Analyze First Part Only") }
+    static var webPageInputHint: LocalizedString { LocalizedString(ja: "利用規約やプライバシーポリシーのページURLを入力してください。", en: "Enter the URL of the terms of service or privacy policy page.") }
+    static var load: LocalizedString { LocalizedString(ja: "読み込む", en: "Load") }
+    static var textInputLimit: LocalizedString { LocalizedString(ja: "※100,000文字まで入力可能です", en: "※Up to 100,000 characters can be entered") }
+    static var done: LocalizedString { LocalizedString(ja: "完了", en: "Done") }
+    
+    // Analysis Result View
+    static var disclaimer: LocalizedString { LocalizedString(ja: "免責事項", en: "Disclaimer") }
+    static var items: LocalizedString { LocalizedString(ja: "件", en: "items") }
+    static var reportTitle: LocalizedString { LocalizedString(ja: "【TrapFinder 解析レポート】", en: "【TrapFinder Analysis Report】") }
+    static var reportDate: LocalizedString { LocalizedString(ja: "実施日", en: "Date") }
+    static var documentType: LocalizedString { LocalizedString(ja: "■ 文書の種類", en: "■ Document Type") }
+    static var summarySection: LocalizedString { LocalizedString(ja: "■ 概要", en: "■ Summary") }
+    static var checkPoints: LocalizedString { LocalizedString(ja: "■ 確認ポイント（%d件）", en: "■ Check Points (%d items)") }
+    static var noIssuesFound: LocalizedString { LocalizedString(ja: "特筆すべき確認事項は検出されませんでした。", en: "No notable issues were detected.") }
+    static var originalText: LocalizedString { LocalizedString(ja: "【原文】", en: "【Original Text】") }
+    static var explanationSection: LocalizedString { LocalizedString(ja: "【解説】", en: "【Explanation】") }
+    static var advice: LocalizedString { LocalizedString(ja: "【アドバイス】", en: "【Advice】") }
+    static var reportFooter: LocalizedString { LocalizedString(ja: "※このレポートはAIによって生成された読解補助情報です。\n※法的助言ではありません。最終的な判断はご自身で行ってください。", en: "※This report is AI-generated reading assistance information.\n※This is not legal advice. Please make final decisions at your own discretion.") }
+    static var noIssuesTitle: LocalizedString { LocalizedString(ja: "特筆すべき確認事項なし", en: "No Notable Issues") }
+    static var noIssuesMessage: LocalizedString { LocalizedString(ja: "AIによるチェックでは、特に注意すべき点は見つかりませんでした。", en: "The AI check found no points requiring special attention.") }
+    
+    // How to Use Guide
+    static var howToUseTitle: LocalizedString { LocalizedString(ja: "使い方", en: "How to Use") }
+    static var howToUseTapToOpen: LocalizedString { LocalizedString(ja: "タップして開く", en: "Tap to expand") }
+    static var howToUseTapToClose: LocalizedString { LocalizedString(ja: "タップして閉じる", en: "Tap to collapse") }
+    static var howToUseStep1: LocalizedString { LocalizedString(ja: "1. 文書をスキャン", en: "1. Scan Document") }
+    static var howToUseStep1Desc: LocalizedString { LocalizedString(ja: "カメラ、アルバム、PDF、URL、テキストから選択", en: "Choose from camera, album, PDF, URL, or text") }
+    static var howToUseStep2: LocalizedString { LocalizedString(ja: "2. AIが自動解析", en: "2. AI Analyzes") }
+    static var howToUseStep2Desc: LocalizedString { LocalizedString(ja: "文書の種類を自動判定し、注意点をチェック", en: "Automatically detects document type and checks for issues") }
+    static var howToUseStep3: LocalizedString { LocalizedString(ja: "3. 結果を確認", en: "3. Review Results") }
+    static var howToUseStep3Desc: LocalizedString { LocalizedString(ja: "分かりやすい解説とアドバイスを表示", en: "View easy-to-understand explanations and advice") }
 }

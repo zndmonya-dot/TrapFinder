@@ -58,7 +58,7 @@ struct AnalysisResultView: View {
                                 Spacer()
                                 
                                 // 件数バッジ
-                                Text("\(result.risks.count)件")
+                                Text("\(result.risks.count)\(L10n.items.text)")
                                     .font(.system(size: 12, weight: .bold, design: .rounded))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 10)
@@ -75,26 +75,19 @@ struct AnalysisResultView: View {
                     }
                     
                     // 免責事項（フッター）
-                    VStack(spacing: 8) {
-                        Text("免責事項")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(hex: "3D405B").opacity(0.6))
-                        
-                        Text(L10n.legalText1.text) // "本アプリは、文書の読解を補助するAIツールです..."
-                            .font(.system(size: 11, design: .rounded))
+                    VStack(spacing: 4) {
+                        Text(L10n.disclaimer.text)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundColor(Color(hex: "3D405B").opacity(0.5))
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(4)
-                            .padding(.horizontal, 40)
                         
-                        Text(L10n.legalText2.text) // "最終判断はご自身で..."
-                            .font(.system(size: 11, design: .rounded))
-                            .foregroundColor(Color(hex: "3D405B").opacity(0.5))
+                        Text(L10n.reportFooter.text)
+                            .font(.system(size: 10, design: .rounded))
+                            .foregroundColor(Color(hex: "3D405B").opacity(0.4))
                             .multilineTextAlignment(.center)
-                            .lineSpacing(4)
+                            .lineSpacing(2)
                             .padding(.horizontal, 40)
                     }
-                    .padding(.top, 20)
+                    .padding(.top, 10)
                 }
                 .padding(.bottom, 60)
             }
@@ -135,14 +128,17 @@ struct AnalysisResultView: View {
         dateFormatter.timeStyle = .none
         let dateString = dateFormatter.string(from: Date())
         
-        var text = """
-        【TrapFinder 解析レポート】
-        実施日: \(dateString)
+        let currentLanguage = LanguageManager.shared.currentLanguage
+        let dateLabel = currentLanguage == .japanese ? L10n.reportDate.text : L10n.reportDate.text
         
-        ■ 文書の種類
+        var text = """
+        \(L10n.reportTitle.text)
+        \(dateLabel): \(dateString)
+        
+        \(L10n.documentType.text)
         \(result.contractType)
         
-        ■ 概要
+        \(L10n.summarySection.text)
         \(result.summary)
         
         --------------------------------------------------
@@ -150,29 +146,29 @@ struct AnalysisResultView: View {
         """
         
         if result.risks.isEmpty {
-            text += "\n特筆すべき確認事項は検出されませんでした。\n"
+            text += "\n\(L10n.noIssuesFound.text)\n"
         } else {
-            text += "■ 確認ポイント（\(result.risks.count)件）\n\n"
+            text += String(format: L10n.checkPoints.text, result.risks.count) + "\n\n"
             
             for (index, risk) in result.risks.enumerated() {
                 let severityLabel: String
                 switch risk.severity {
-                case .high: severityLabel = "[重要]"
-                case .medium: severityLabel = "[注意]"
-                case .low: severityLabel = "[確認]"
-                case .info: severityLabel = "[情報]"
+                case .high: severityLabel = currentLanguage == .japanese ? "[重要]" : "[ALERT]"
+                case .medium: severityLabel = currentLanguage == .japanese ? "[注意]" : "[WARN]"
+                case .low: severityLabel = currentLanguage == .japanese ? "[確認]" : "[NOTE]"
+                case .info: severityLabel = currentLanguage == .japanese ? "[情報]" : "[INFO]"
                 }
                 
                 text += """
                 \(index + 1). \(severityLabel) \(risk.title)
                 
-                【原文】
+                \(L10n.originalText.text)
                 "\(risk.quote)"
                 
-                【解説】
+                \(L10n.explanationSection.text)
                 \(risk.description)
                 
-                【アドバイス】
+                \(L10n.advice.text)
                 \(risk.suggestion)
                 
                 
@@ -182,8 +178,7 @@ struct AnalysisResultView: View {
         
         text += """
         --------------------------------------------------
-        ※このレポートはAIによって生成された読解補助情報です。
-        ※法的助言ではありません。最終的な判断はご自身で行ってください。
+        \(L10n.reportFooter.text)
         """
         
         return text
@@ -210,6 +205,7 @@ struct ShareSheet: UIViewControllerRepresentable {
 struct RiskCardView: View {
     let risk: RiskItem
     let index: Int
+    @State private var isExpanded = false
     
     var severityColor: Color {
         switch risk.severity {
@@ -239,89 +235,112 @@ struct RiskCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(severityText)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(severityTextColor) // 文字色を調整
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(severityColor)
-                    .cornerRadius(8)
-                Spacer()
+            // ヘッダー部分（タップで展開）
+            Button(action: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        HStack {
+                            Text(severityText)
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .fontWeight(.bold)
+                                .foregroundColor(severityTextColor)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(severityColor)
+                                .cornerRadius(8)
+                            Spacer()
+                        }
+                        
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(Color(hex: "3D405B").opacity(0.5))
+                            .rotationEffect(.degrees(isExpanded ? 0 : 0))
+                    }
+                    
+                    Text("\(index). \(risk.title)")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .fontWeight(.bold)
+                        .foregroundColor(Color(hex: "3D405B"))
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(isExpanded ? nil : 2)
+                }
+                .padding(16)
             }
-            .padding([.top, .horizontal], 16)
             
-            Text("\(index). \(risk.title)")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundColor(Color(hex: "3D405B"))
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .lineLimit(2)
-            
-            VStack(alignment: .leading, spacing: 16) {
-                if !risk.quote.isEmpty {
+            // 詳細部分（展開時のみ表示）
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 16) {
+                    Divider()
+                        .background(Color.gray.opacity(0.2))
+                    
+                    if !risk.quote.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(L10n.quote.text)
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(.secondary)
+                                .fontWeight(.bold)
+                            
+                            Text(risk.quote)
+                                .font(.system(size: 16, design: .rounded))
+                                .foregroundColor(Color(hex: "3D405B"))
+                                .lineSpacing(4)
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(hex: "F4F1DE")) // 背景色を少し濃く（opacity削除）
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.gray.opacity(0.1), lineWidth: 1) // 枠線を追加して視認性向上
+                                )
+                        }
+                    }
+                    
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(L10n.quote.text)
+                        Text(L10n.explanationSection.text)
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(.secondary)
                             .fontWeight(.bold)
                         
-                        Text(risk.quote)
+                        Text(risk.description)
                             .font(.system(size: 16, design: .rounded))
                             .foregroundColor(Color(hex: "3D405B"))
                             .lineSpacing(4)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(hex: "F4F1DE")) // 背景色を少し濃く（opacity削除）
-                            .cornerRadius(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.gray.opacity(0.1), lineWidth: 1) // 枠線を追加して視認性向上
-                            )
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L10n.explanation.text)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .fontWeight(.bold)
-                    
-                    Text(risk.description)
-                        .font(.system(size: 16, design: .rounded))
-                        .foregroundColor(Color(hex: "3D405B"))
-                        .lineSpacing(4)
-                }
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "eye.fill")
-                            .foregroundColor(Color(hex: "E07A5F"))
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                        Text(L10n.suggestion.text) // "チェックの視点" / "アドバイス"
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .fontWeight(.bold)
-                            .foregroundColor(Color(hex: "E07A5F"))
-                        Spacer()
                     }
                     
-                    Text(risk.suggestion)
-                        .font(.system(size: 16, design: .rounded))
-                        .foregroundColor(Color(hex: "3D405B"))
-                        .lineSpacing(4)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "eye.fill")
+                                .foregroundColor(Color(hex: "E07A5F"))
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                            Text(L10n.suggestion.text) // "チェックの視点" / "アドバイス"
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .fontWeight(.bold)
+                                .foregroundColor(Color(hex: "E07A5F"))
+                            Spacer()
+                        }
+                        
+                        Text(risk.suggestion)
+                            .font(.system(size: 16, design: .rounded))
+                            .foregroundColor(Color(hex: "3D405B"))
+                            .lineSpacing(4)
+                    }
+                    .padding(12)
+                    .background(Color(hex: "E07A5F").opacity(0.1))
+                    .cornerRadius(12)
                 }
-                .padding(12)
-                .background(Color(hex: "E07A5F").opacity(0.1))
-                .cornerRadius(12)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .transition(.opacity) // シンプルなフェードインに戻す
             }
-            .padding(16)
         }
         .background(Color.white)
         .cornerRadius(20)
         .shadow(color: Color(hex: "E07A5F").opacity(0.1), radius: 10, x: 0, y: 5)
-        .padding(.horizontal)
+        // .clipped() // 削除
     }
 }
 
@@ -333,10 +352,10 @@ struct EmptyRiskView: View {
                 .foregroundColor(Color(hex: "81B29A"))
             
             VStack(spacing: 8) {
-                Text("特筆すべき確認事項なし")
+                Text(L10n.noIssuesTitle.text)
                     .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundColor(Color(hex: "3D405B"))
-                Text("AIによるチェックでは、特に注意すべき点は見つかりませんでした。")
+                Text(L10n.noIssuesMessage.text)
                     .font(.system(size: 15, design: .rounded))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)

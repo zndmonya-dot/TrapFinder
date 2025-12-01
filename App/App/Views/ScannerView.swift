@@ -4,6 +4,48 @@ import Vision
 import VisionKit
 import PhotosUI
 
+struct DocumentCameraView: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    @Environment(\.presentationMode) var presentationMode
+    
+    func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
+        let scannerViewController = VNDocumentCameraViewController()
+        scannerViewController.delegate = context.coordinator
+        return scannerViewController
+    }
+    
+    func updateUIViewController(_ uiViewController: VNDocumentCameraViewController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, VNDocumentCameraViewControllerDelegate {
+        let parent: DocumentCameraView
+        
+        init(_ parent: DocumentCameraView) {
+            self.parent = parent
+        }
+        
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
+            if scan.pageCount > 0 {
+                let image = scan.imageOfPage(at: 0)
+                parent.image = image
+            }
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+        
+        func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+        
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
+            print("Document scan failed: \(error.localizedDescription)")
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
+
 struct ScannerView: View {
     @StateObject private var viewModel = ScannerViewModel()
     @StateObject private var revenueCatService = RevenueCatService.shared
@@ -76,9 +118,9 @@ struct ScannerView: View {
             }
             .alert(isPresented: $viewModel.showingTokenLimitAlert) {
                 Alert(
-                    title: Text("文字数が多すぎます"), // ここもローカライズ必要だが今回はスキップ
-                    message: Text("読み取った文字数が20,000文字を超えています。\nすべて解析すると時間がかかり、エラーになる可能性があります。\n\n先頭の20,000文字だけ解析しますか？"),
-                    primaryButton: .default(Text("先頭のみ解析する")) {
+                    title: Text(L10n.tokenLimitTitle.text),
+                    message: Text(L10n.tokenLimitMessage.text),
+                    primaryButton: .default(Text(L10n.analyzeTruncated.text)) {
                         viewModel.analyzeWithTruncation()
                     },
                     secondaryButton: .cancel(Text(L10n.cancel.text))
@@ -140,6 +182,9 @@ struct ScannerContentView: View {
                     ScrollView {
                         VStack(spacing: 16) { // 均等な間隔で並べる
                             Spacer(minLength: 10)
+                            
+                            // 使い方ガイドカード（ポップなデザイン）
+                            HowToUseCard()
                             
                             // 全ての機能を横長カード（リスト形式）で統一
                             // L10nを使って多言語対応
@@ -315,6 +360,144 @@ struct ListButton: View {
     }
 }
 
+// 使い方ガイドカード
+struct HowToUseCard: View {
+    @State private var isExpanded = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // ヘッダー部分（常に表示）
+            Button(action: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color(hex: "E07A5F"), Color(hex: "F2CC8F")]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 50, height: 50)
+                        
+                        Image(systemName: "lightbulb.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.howToUseTitle.text)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(hex: "3D405B"))
+                        
+                        Text(isExpanded ? L10n.howToUseTapToClose.text : L10n.howToUseTapToOpen.text)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(Color(hex: "3D405B").opacity(0.6))
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(Color(hex: "E07A5F"))
+                        .rotationEffect(.degrees(isExpanded ? 0 : 0))
+                }
+                .padding(16)
+            }
+            
+            // 展開部分
+            if isExpanded {
+                VStack(spacing: 16) {
+                    Divider()
+                        .background(Color.gray.opacity(0.2))
+                    
+                    // ステップ1
+                    HowToUseStep(
+                        number: "1",
+                        title: L10n.howToUseStep1.text,
+                        description: L10n.howToUseStep1Desc.text,
+                        icon: "doc.text.magnifyingglass",
+                        color: Color(hex: "E07A5F")
+                    )
+                    
+                    // ステップ2
+                    HowToUseStep(
+                        number: "2",
+                        title: L10n.howToUseStep2.text,
+                        description: L10n.howToUseStep2Desc.text,
+                        icon: "sparkles",
+                        color: Color(hex: "F2CC8F")
+                    )
+                    
+                    // ステップ3
+                    HowToUseStep(
+                        number: "3",
+                        title: L10n.howToUseStep3.text,
+                        description: L10n.howToUseStep3Desc.text,
+                        icon: "checkmark.seal.fill",
+                        color: Color(hex: "81B29A")
+                    )
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .transition(.opacity) // シンプルなフェードインに戻す
+            }
+        }
+        .background(Color.white)
+        .cornerRadius(20)
+        .shadow(color: Color(hex: "E07A5F").opacity(0.15), radius: 10, x: 0, y: 5)
+        // .clipped() // 削除
+    }
+}
+
+// 使い方ステップコンポーネント
+struct HowToUseStep: View {
+    let number: String
+    let title: String
+    let description: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // 番号バッジ
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 36, height: 36)
+                
+                Text(number)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(color)
+            }
+            
+            // アイコン
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(color)
+                .frame(width: 30)
+            
+            // テキスト
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(hex: "3D405B"))
+                
+                Text(description)
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundColor(Color(hex: "3D405B").opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer()
+        }
+    }
+}
+
 // 既存の補助ビューは変更なし（省略せず記述）
 struct URLInputView: View {
     @ObservedObject var viewModel: ScannerViewModel
@@ -329,7 +512,7 @@ struct URLInputView: View {
                     .foregroundColor(Color(hex: "3D405B"))
                     .padding(.top)
                 
-                TextField("https://example.com/terms", text: $urlString)
+                TextField("https://", text: $urlString)
                     .keyboardType(.URL)
                     .autocapitalization(.none)
                     .padding()
@@ -341,7 +524,7 @@ struct URLInputView: View {
                     )
                     .padding(.horizontal)
                 
-                Text("利用規約やプライバシーポリシーのページURLを入力してください。")
+                Text(L10n.webPageInputHint.text)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.horizontal)
@@ -359,7 +542,7 @@ struct URLInputView: View {
                     .foregroundColor(.secondary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("読み込む") {
+                    Button(L10n.load.text) {
                         viewModel.scanURL(urlString)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -393,7 +576,7 @@ struct TextInputView: View {
                     .shadow(color: Color.black.opacity(0.05), radius: 5)
                     .padding(.horizontal)
                 
-                Text("※20,000文字まで入力可能です")
+                Text(L10n.textInputLimit.text)
                     .font(.system(.caption, design: .rounded))
                     .foregroundColor(.secondary)
                     .padding(.horizontal)
@@ -410,7 +593,7 @@ struct TextInputView: View {
                     .foregroundColor(.secondary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完了") {
+                    Button(L10n.done.text) {
                         presentationMode.wrappedValue.dismiss()
                     }
                     .font(.system(.body, design: .rounded))

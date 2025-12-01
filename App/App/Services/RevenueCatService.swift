@@ -31,7 +31,7 @@ enum UserPlan: String, CaseIterable {
     
     // 1回の文字数制限
     var characterLimit: Int {
-        return 20000
+        return 100000 // 100,000文字に緩和（約50ページ分）
     }
 }
 
