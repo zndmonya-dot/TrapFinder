@@ -145,6 +145,46 @@ struct ScannerContentView: View {
         endPoint: .bottomTrailing
     )
     
+    private var scannerActions: [ScannerAction] {
+        [
+            ScannerAction(
+                title: L10n.cameraScan.text,
+                subtitle: L10n.cameraScanDesc.text,
+                icon: "camera.fill",
+                tintColor: Color(hex: "E07A5F"),
+                handler: { viewModel.checkCameraPermission() }
+            ),
+            ScannerAction(
+                title: L10n.albumSelect.text,
+                subtitle: L10n.albumSelectDesc.text,
+                icon: "photo.on.rectangle.fill",
+                tintColor: Color(hex: "F2CC8F"),
+                handler: { viewModel.showingImagePicker = true }
+            ),
+            ScannerAction(
+                title: L10n.pdfImport.text,
+                subtitle: L10n.pdfImportDesc.text,
+                icon: "doc.text.fill",
+                tintColor: Color(hex: "81B29A"),
+                handler: { viewModel.showingFileImporter = true }
+            ),
+            ScannerAction(
+                title: L10n.webPage.text,
+                subtitle: L10n.webPageDesc.text,
+                icon: "globe",
+                tintColor: Color(hex: "3D405B"),
+                handler: { viewModel.showingURLInput = true }
+            ),
+            ScannerAction(
+                title: L10n.textInput.text,
+                subtitle: L10n.textInputDesc.text,
+                icon: "keyboard",
+                tintColor: Color(hex: "9D8189"),
+                handler: { viewModel.showingTextInput = true }
+            )
+        ]
+    }
+    
     var body: some View {
         ZStack {
             bgGradient.ignoresSafeArea()
@@ -186,52 +226,14 @@ struct ScannerContentView: View {
                             // 使い方ガイドカード（ポップなデザイン）
                             HowToUseCard()
                             
-                            // 全ての機能を横長カード（リスト形式）で統一
-                            // L10nを使って多言語対応
-                            
-                            ListButton(
-                                title: L10n.cameraScan.text,
-                                subtitle: L10n.cameraScanDesc.text,
-                                icon: "camera.fill",
-                                color: Color(hex: "E07A5F")
-                            ) {
-                                viewModel.checkCameraPermission()
-                            }
-                            
-                            ListButton(
-                                title: L10n.albumSelect.text,
-                                subtitle: L10n.albumSelectDesc.text,
-                                icon: "photo.on.rectangle.fill",
-                                color: Color(hex: "F2CC8F")
-                            ) {
-                                viewModel.showingImagePicker = true
-                            }
-                            
-                            ListButton(
-                                title: L10n.pdfImport.text,
-                                subtitle: L10n.pdfImportDesc.text,
-                                icon: "doc.text.fill",
-                                color: Color(hex: "81B29A")
-                            ) {
-                                viewModel.showingFileImporter = true
-                            }
-                            
-                            ListButton(
-                                title: L10n.webPage.text,
-                                subtitle: L10n.webPageDesc.text,
-                                icon: "globe",
-                                color: Color(hex: "3D405B")
-                            ) {
-                                viewModel.showingURLInput = true
-                            }
-                            
-                            ListButton(
-                                title: L10n.textInput.text,
-                                subtitle: L10n.textInputDesc.text,
-                                icon: "keyboard",
-                                color: Color(hex: "9D8189")
-                            ) {
-                                viewModel.showingTextInput = true
+                            ForEach(scannerActions) { action in
+                                ListButton(
+                                    title: action.title,
+                                    subtitle: action.subtitle,
+                                    icon: action.icon,
+                                    color: action.tintColor,
+                                    action: action.handler
+                                )
                             }
                             
                             HStack(spacing: 8) {
@@ -358,6 +360,15 @@ struct ListButton: View {
             .shadow(color: color.opacity(0.3), radius: 8, x: 0, y: 4)
         }
     }
+}
+
+private struct ScannerAction: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let icon: String
+    let tintColor: Color
+    let handler: () -> Void
 }
 
 // 使い方ガイドカード

@@ -70,13 +70,7 @@ class ScannerViewModel: ObservableObject {
     
     func scanImages(_ images: [UIImage]) {
         guard !images.isEmpty else { return }
-        isScanning = true
-        errorMessage = nil
-        
-        DispatchQueue.main.async {
-            self.totalScanPages = images.count
-            self.currentScanPage = 0
-        }
+        startScanning(totalPages: images.count)
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.processImagesSequentially(images: images)
@@ -84,8 +78,7 @@ class ScannerViewModel: ObservableObject {
     }
     
     func scanPDF(url: URL) {
-        isScanning = true
-        errorMessage = nil
+        startScanning()
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let accessGranted = url.startAccessingSecurityScopedResource()
@@ -123,50 +116,15 @@ class ScannerViewModel: ObservableObject {
             normalizedURLString = "https://" + normalizedURLString
         }
         
-        guard let url = URL(string: normalizedURLString) else {
-            errorMessage = "無効なURLです。正しいURLを入力してください。"
+        guard let url = normalizedURL(from: normalizedURLString) else {
+            errorMessage = "http:// または https:// で始まる正しいURLを入力してください。"
             return
         }
         
-        // URLスキームのバリデーション（http/httpsのみ許可）
-        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
-            errorMessage = "http:// または https:// で始まるURLを入力してください。"
-            return
-        }
-        
-        isScanning = true
-        errorMessage = nil
-        currentScanPage = 0
-        totalScanPages = 0
-        
+        startScanning()
         webPageHelper.fetchText(from: url) { [weak self] result in
             DispatchQueue.main.async {
-                self?.isScanning = false
-                switch result {
-                case .success(let text):
-                    if text.isEmpty {
-                        self?.errorMessage = "ページからテキストを読み取れませんでした。ページが空か、アクセスできない可能性があります。"
-                    } else {
-                        self?.scannedText = text
-                    }
-                case .failure(let error):
-                    // LocalizedErrorプロトコルに準拠している場合はerrorDescriptionを使用
-                    if let localizedError = error as? LocalizedError,
-                       let description = localizedError.errorDescription {
-                        self?.errorMessage = description
-                    } else {
-                        let errorDesc = error.localizedDescription
-                        if errorDesc.contains("NSURLError") || errorDesc.contains("network") || errorDesc.contains("timed out") {
-                            self?.errorMessage = "ネットワークエラー: インターネット接続を確認してください。"
-                        } else if errorDesc.contains("404") {
-                            self?.errorMessage = "ページが見つかりませんでした（404エラー）。URLを確認してください。"
-                        } else if errorDesc.contains("403") || errorDesc.contains("401") {
-                            self?.errorMessage = "ページへのアクセスが拒否されました。認証が必要な可能性があります。"
-                        } else {
-                            self?.errorMessage = "読み込みエラー: \(errorDesc)"
-                        }
-                    }
-                }
+                self?.handleWebTextFetch(result)
             }
         }
     }
@@ -272,5 +230,55 @@ class ScannerViewModel: ObservableObject {
     func clearImage() {
         selectedImage = nil
         scannedText = ""
+    }
+    
+    // MARK: - Private Helpers
+    
+    private func startScanning(totalPages: Int = 0) {
+        DispatchQueue.main.async {
+            self.isScanning = true
+            self.errorMessage = nil
+            self.totalScanPages = totalPages
+            self.currentScanPage = totalPages > 0 ? 0 : self.currentScanPage
+        }
+    }
+    
+    private func normalizedURL(from urlString: String) -> URL? {
+        guard let url = URL(string: urlString) else { return nil }
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            return nil
+        }
+        return url
+    }
+    
+    private func handleWebTextFetch(_ result: Result<String, Error>) {
+        isScanning = false
+        switch result {
+        case .success(let text):
+            if text.isEmpty {
+                errorMessage = "ページからテキストを読み取れませんでした。ページが空か、アクセスできない可能性があります。"
+            } else {
+                scannedText = text
+            }
+        case .failure(let error):
+            errorMessage = errorMessage(from: error)
+        }
+    }
+    
+    private func errorMessage(from error: Error) -> String {
+        if let localizedError = error as? LocalizedError, let description = localizedError.errorDescription {
+            return description
+        }
+        
+        let description = error.localizedDescription
+        if description.contains("NSURLError") || description.contains("network") || description.contains("timed out") {
+            return "ネットワークエラー: インターネット接続を確認してください。"
+        } else if description.contains("404") {
+            return "ページが見つかりませんでした（404エラー）。URLを確認してください。"
+        } else if description.contains("403") || description.contains("401") {
+            return "ページへのアクセスが拒否されました。認証が必要な可能性があります。"
+        } else {
+            return "読み込みエラー: \(description)"
+        }
     }
 }

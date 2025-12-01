@@ -36,44 +36,11 @@ struct PaywallView: View {
                         .padding(.bottom, 10)
                         
                         // --- プラン比較カード (縦並び) ---
-                        
-                        // 1. フリープラン
-                        PlanCard(
-                            title: L10n.freePlan.text,
-                            price: L10n.freePrice.text,
-                            features: [
-                                (L10n.standardAI.text, true),
-                                (L10n.limit3perDay.text, true),
-                                (L10n.charLimit10k.text, true)
-                            ],
-                            themeColor: Color(hex: "81B29A"), // Green
-                            isRecommended: false,
-                            isCurrent: revenueCatService.currentPlan == .free,
-                            buttonText: revenueCatService.currentPlan == .free ? L10n.currentPlan.text : L10n.restorePurchase.text // フリーに戻るという概念はないため
-                        ) {
-                            // フリープランへの変更アクション（通常は不要だが復元などを割り当て可能）
+                        VStack(spacing: 16) {
+                            ForEach(planCardConfigs) { config in
+                                PlanCard(config: config)
+                            }
                         }
-                        .disabled(true) // フリープランは選択不可（デフォルト）
-                        
-                        // 2. スタンダードプラン (Recommended)
-                        PlanCard(
-                            title: L10n.standardPlan.text,
-                            price: L10n.standardPrice.text,
-                            features: [
-                                (L10n.standardAI.text, true),
-                                (L10n.unlimitedScans.text, true),
-                                (L10n.charLimit100k.text, true)
-                            ],
-                            themeColor: Color(hex: "E07A5F"), // Orange
-                            isRecommended: true,
-                            isCurrent: revenueCatService.currentPlan == .standard,
-                            buttonText: revenueCatService.currentPlan == .standard ? L10n.currentPlan.text : "アップグレードする" // "Upgrade"
-                        ) {
-                            startPurchase(plan: .standard)
-                        }
-                        
-                        // 3. プロプラン (Locked)
-                        LockedPlanCard()
                         
                         // --- フッター (法的情報) ---
                         VStack(spacing: 16) {
@@ -158,6 +125,83 @@ struct PaywallView: View {
         .id(languageManager.currentLanguage.id)
     }
     
+    private var planCardConfigs: [PlanCardConfiguration] {
+        let freeFeatures = [
+            PlanFeature(text: L10n.standardAI.text),
+            PlanFeature(text: L10n.limit3perDay.text),
+            PlanFeature(text: L10n.charLimit10k.text)
+        ]
+        
+        let standardFeatures = [
+            PlanFeature(text: L10n.standardAI.text),
+            PlanFeature(text: L10n.unlimitedScans.text),
+            PlanFeature(text: L10n.charLimit100k.text)
+        ]
+        
+        let proFeatures = [
+            PlanFeature(text: L10n.highPerformanceAI.text),
+            PlanFeature(text: L10n.limit20perDay.text),
+            PlanFeature(text: L10n.charLimit100k.text)
+        ]
+        
+        let isStandard = revenueCatService.currentPlan == .standard
+        let isFree = revenueCatService.currentPlan == .free
+        
+        return [
+            PlanCardConfiguration(
+                tier: .free,
+                title: L10n.freePlan.text,
+                price: L10n.freePrice.text,
+                features: freeFeatures,
+                accentColor: Color(hex: "81B29A"),
+                icon: "leaf.fill",
+                badge: nil,
+                drawsAccentBorder: false,
+                isLocked: false,
+                isCurrent: isFree,
+                lockedMessage: nil,
+                buttonTitle: nil,
+                action: nil
+            ),
+            PlanCardConfiguration(
+                tier: .standard,
+                title: L10n.standardPlan.text,
+                price: L10n.standardPrice.text,
+                features: standardFeatures,
+                accentColor: Color(hex: "E07A5F"),
+                icon: "star.fill",
+                badge: PlanCardConfiguration.Badge(
+                    text: L10n.recommended.text,
+                    background: Color(hex: "E07A5F")
+                ),
+                drawsAccentBorder: true,
+                isLocked: false,
+                isCurrent: isStandard,
+                lockedMessage: nil,
+                buttonTitle: isStandard ? nil : L10n.upgradeCta.text,
+                action: isStandard ? nil : { startPurchase(plan: .standard) }
+            ),
+            PlanCardConfiguration(
+                tier: .pro,
+                title: L10n.proPlan.text,
+                price: L10n.proPrice.text,
+                features: proFeatures,
+                accentColor: Color.gray,
+                icon: "lock.fill",
+                badge: PlanCardConfiguration.Badge(
+                    text: L10n.comingSoon.text,
+                    background: Color.gray.opacity(0.7)
+                ),
+                drawsAccentBorder: false,
+                isLocked: true,
+                isCurrent: false,
+                lockedMessage: L10n.comingSoon.text,
+                buttonTitle: nil,
+                action: nil
+            )
+        ]
+    }
+    
     func startPurchase(plan: UserPlan) {
         guard revenueCatService.currentPlan != plan else { return }
         
@@ -182,226 +226,171 @@ struct PaywallView: View {
 
 // --- 新しい比較用カードデザイン ---
 struct PlanCard: View {
-    let title: String
-    let price: String
-    let features: [(String, Bool)] // (テキスト, 有効かどうか)
-    let themeColor: Color
-    let isRecommended: Bool
-    let isCurrent: Bool
-    let buttonText: String
-    let action: () -> Void
+    let config: PlanCardConfiguration
     
     var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .top) {
-                // カード背景
+        Group {
+            if let action = config.action {
+                Button(action: action) {
+                    cardBody
+                }
+                .buttonStyle(.plain)
+            } else {
+                cardBody
+            }
+        }
+        .opacity(config.isLocked ? 0.75 : 1)
+    }
+    
+    private var cardBody: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+            
+            if config.drawsAccentBorder {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                    .stroke(config.accentColor, lineWidth: 2)
+            }
+            
+            VStack(spacing: 0) {
+                header
+                Divider()
+                    .padding(.horizontal, 20)
+                featureList
+                footer
+            }
+            
+            if let badge = config.badge {
+                Text(badge.text)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(badge.background)
+                    .cornerRadius(8)
+                    .offset(y: -12)
+                    .padding(.trailing, 20)
+            }
+        }
+    }
+    
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(config.title)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(hex: "3D405B"))
                 
-                // Recommended枠線
-                if isRecommended {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(themeColor, lineWidth: 2)
-                }
-                
-                VStack(spacing: 0) {
-                    // ヘッダー部分
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(title)
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(hex: "3D405B"))
-                            
-                            Text(price)
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
-                                .foregroundColor(Color(hex: "3D405B").opacity(0.7))
-                        }
-                        
-                        Spacer()
-                        
-                        // アイコン
-                        ZStack {
-                            Circle()
-                                .fill(themeColor.opacity(0.15))
-                                .frame(width: 44, height: 44)
-                            Image(systemName: isRecommended ? "star.fill" : "leaf.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(themeColor)
-                        }
-                    }
-                    .padding(20)
+                Text(config.price)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(Color(hex: "3D405B").opacity(0.7))
+            }
+            
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(config.accentColor.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                Image(systemName: config.icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(config.isLocked ? Color.gray : config.accentColor)
+            }
+        }
+        .padding(20)
+    }
+    
+    private var featureList: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(config.features) { feature in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: config.isLocked ? "lock.fill" : "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(config.isLocked ? Color.gray.opacity(0.5) : config.accentColor)
+                        .frame(width: 20, alignment: .leading)
                     
-                    Divider()
-                        .padding(.horizontal, 20)
+                    Text(feature.text)
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundColor(config.isLocked ? Color.gray.opacity(0.7) : Color(hex: "3D405B").opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
                     
-                    // 機能リスト
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(features, id: \.0) { feature in
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(themeColor)
-                                
-                                Text(feature.0)
-                                    .font(.system(size: 14, design: .rounded))
-                                    .foregroundColor(Color(hex: "3D405B").opacity(0.8))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                
-                                Spacer()
-                            }
-                        }
-                    }
-                    .padding(20)
-                    
-                    Spacer(minLength: 0)
-                    
-                    // ボタン (現在のプランの場合は表示を変える)
-                    if !isCurrent && isRecommended {
-                        HStack {
-                            Spacer()
-                            Text(buttonText)
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, 24)
-                                .background(themeColor)
-                                .cornerRadius(20)
-                            Spacer()
-                        }
-                        .padding(.bottom, 20)
-                    } else if isCurrent {
-                        HStack {
-                            Spacer()
-                            HStack(spacing: 6) {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
-                                Text(L10n.currentPlan.text)
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                            }
-                            .foregroundColor(themeColor)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 16)
-                            .background(themeColor.opacity(0.1))
-                            .cornerRadius(12)
-                            Spacer()
-                        }
-                        .padding(.bottom, 20)
-                    } else {
-                        // フリープランなどでボタンを表示しない場合、下の余白だけ確保
-                         Color.clear.frame(height: 10)
-                    }
-                }
-                
-                // Recommendedバッジ (左上ではなく右上に配置して被りを防ぐ、あるいは上部中央)
-                if isRecommended {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Text("RECOMMENDED")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(themeColor)
-                                .cornerRadius(8)
-                                .offset(y: -12) // カードの上に少しはみ出させる
-                                .padding(.trailing, 20)
-                        }
-                        Spacer()
-                    }
+                    Spacer()
                 }
             }
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+    
+    private var footer: some View {
+        Group {
+            if config.isLocked, let lockedMessage = config.lockedMessage {
+                Text(lockedMessage)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.gray)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
+            } else if config.isCurrent {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12))
+                    Text(L10n.currentPlan.text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(config.accentColor)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .background(config.accentColor.opacity(0.1))
+                .cornerRadius(20)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 20)
+            } else if let buttonTitle = config.buttonTitle, config.action != nil {
+                Text(buttonTitle)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 24)
+                    .background(config.accentColor)
+                    .cornerRadius(24)
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 20)
+            } else {
+                Color.clear.frame(height: 8)
+                    .padding(.bottom, 12)
+            }
+        }
     }
 }
 
-// ロックされたプロプランカード
-struct LockedPlanCard: View {
-    @ObservedObject private var languageManager = LanguageManager.shared
-    
-    var body: some View {
-        ZStack(alignment: .top) {
-            // カード背景
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.6))
-                .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
-            
-            // ロックオーバーレイ
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-            
-            VStack(spacing: 0) {
-                // ヘッダー
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(languageManager.currentLanguage == .japanese ? "プロプラン" : "Pro Plan")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundColor(.gray)
-                            
-                            Text(languageManager.currentLanguage == .japanese ? "準備中" : "Coming Soon")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.gray.opacity(0.7))
-                                .cornerRadius(8)
-                        }
-                        
-                        Text(languageManager.currentLanguage == .japanese ? "¥980 / 月 (予定)" : "¥980 / Month (Planned)")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundColor(.gray.opacity(0.7))
-                    }
-                    
-                    Spacer()
-                    
-                    ZStack {
-                        Circle()
-                            .fill(Color.gray.opacity(0.1))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.gray.opacity(0.5))
-                    }
-                }
-                .padding(20)
-                
-                Divider()
-                    .padding(.horizontal, 20)
-                
-                // 機能リスト
-                VStack(alignment: .leading, spacing: 12) {
-                    let features = languageManager.currentLanguage == .japanese ? [
-                        "高性能AI (GPT-4o) 搭載",
-                        "1日20回",
-                        "1回100,000文字まで"
-                    ] : [
-                        "High-Performance AI (GPT-4o)",
-                        "20 scans per day",
-                        "100,000 characters per scan"
-                    ]
-                    
-                    ForEach(features, id: \.self) { feature in
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(.gray.opacity(0.4))
-                                .frame(width: 16, height: 16) // サイズ合わせ
-                            
-                            Text(feature)
-                                .font(.system(size: 14, design: .rounded))
-                                .foregroundColor(.gray.opacity(0.7))
-                            
-                            Spacer()
-                        }
-                    }
-                }
-                .padding(20)
-                .padding(.bottom, 10)
-            }
-        }
-        .opacity(0.8)
+struct PlanCardConfiguration: Identifiable {
+    enum Tier: String {
+        case free, standard, pro
     }
+    
+    struct Badge {
+        let text: String
+        let background: Color
+    }
+    
+    let tier: Tier
+    let title: String
+    let price: String
+    let features: [PlanFeature]
+    let accentColor: Color
+    let icon: String
+    let badge: Badge?
+    let drawsAccentBorder: Bool
+    let isLocked: Bool
+    let isCurrent: Bool
+    let lockedMessage: String?
+    let buttonTitle: String?
+    let action: (() -> Void)?
+    
+    var id: String { tier.rawValue }
+}
+
+struct PlanFeature: Identifiable {
+    let id = UUID()
+    let text: String
 }

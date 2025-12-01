@@ -134,8 +134,12 @@ enum L10n {
     static var charLimit10k: LocalizedString { LocalizedString(ja: "1回 10,000文字まで", en: "10k chars / scan") }
     static var charLimit100k: LocalizedString { LocalizedString(ja: "1回 100,000文字まで", en: "100k chars / scan") }
     static var charLimit50k: LocalizedString { LocalizedString(ja: "1回 50,000文字まで", en: "50k chars / scan") }
+    static var limit20perDay: LocalizedString { LocalizedString(ja: "1日20回まで", en: "20 times / day") }
     static var detailedAnalysis: LocalizedString { LocalizedString(ja: "より詳細なAI解説", en: "Detailed AI Analysis") }
     static var proFeatures: LocalizedString { LocalizedString(ja: "高性能AI + 無制限 (モデル選択可)", en: "High-Performance + Unlimited (Selectable)") }
+    static var upgradeCta: LocalizedString { LocalizedString(ja: "アップグレードする", en: "Upgrade") }
+    static var comingSoon: LocalizedString { LocalizedString(ja: "準備中", en: "Coming Soon") }
+    static var recommended: LocalizedString { LocalizedString(ja: "おすすめ", en: "Recommended") }
     
     static var restorePurchase: LocalizedString { LocalizedString(ja: "購入を復元", en: "Restore Purchase") }
     static var terms: LocalizedString { LocalizedString(ja: "利用規約", en: "Terms of Service") }

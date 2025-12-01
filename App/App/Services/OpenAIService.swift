@@ -1,5 +1,15 @@
 import Foundation
 
+@preconcurrency private struct OpenAIResponse: Decodable {
+    @preconcurrency struct Choice: Decodable {
+        @preconcurrency struct Message: Decodable {
+            let content: String
+        }
+        let message: Message
+    }
+    let choices: [Choice]
+}
+
 class OpenAIService {
     static let shared = OpenAIService()
     private let apiKey = AppConfig.openAIAPIKey
@@ -7,9 +17,12 @@ class OpenAIService {
     
     private init() {}
     
-    // nonisolatedなデコード関数
-    nonisolated private static func decodeAnalysisResult(from data: Data) throws -> AnalysisResult {
-        return try JSONDecoder().decode(AnalysisResult.self, from: data)
+    nonisolated private static func decodeResponse(from data: Data) throws -> OpenAIResponse {
+        try JSONDecoder().decode(OpenAIResponse.self, from: data)
+    }
+    
+    nonisolated private static func decodeAnalysisResult(from contentData: Data) throws -> AnalysisResult {
+        try JSONDecoder().decode(AnalysisResult.self, from: contentData)
     }
     
     enum OpenAIError: Error {
@@ -31,19 +44,78 @@ class OpenAIService {
         request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // 現在の言語設定を取得
         let currentLanguage = LanguageManager.shared.currentLanguage
         
-        // 言語ごとの出力指示
-        let outputLanguageInstruction: String
-        if currentLanguage == .japanese {
-            outputLanguageInstruction = "- 言語: **必ず日本語で出力すること。**"
-        } else {
-            outputLanguageInstruction = "- Language: **Output MUST be in English.**"
+        do {
+            request.httpBody = try requestBody(text: text, model: model, language: currentLanguage)
+        } catch {
+            completion(.failure(error))
+            return
         }
         
-        // プロンプト設定（完全網羅型に強化）
-        let systemPrompt = """
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200...299).contains(httpResponse.statusCode) {
+                let errorMessage = "HTTPエラー: \(httpResponse.statusCode)"
+                completion(.failure(OpenAIError.apiError(errorMessage)))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(OpenAIError.noData))
+                return
+            }
+            
+            do {
+                let aiResponse = try Self.decodeResponse(from: data)
+                guard let content = aiResponse.choices.first?.message.content,
+                      let contentData = content.data(using: .utf8) else {
+                    completion(.failure(OpenAIError.decodingError))
+                    return
+                }
+                
+                let result = try Self.decodeAnalysisResult(from: contentData)
+                DispatchQueue.main.async {
+                    completion(.success(result))
+                }
+            } catch {
+                print("Decoding Error: \(error)")
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+    
+    private func requestBody(text: String, model: String, language: Language) throws -> Data {
+        let messages: [[String: String]] = [
+            ["role": "system", "content": systemPrompt(for: language)],
+            ["role": "user", "content": "以下の文書を解析してください。\n\n\(text)"]
+        ]
+        
+        let parameters: [String: Any] = [
+            "model": model,
+            "messages": messages,
+            "response_format": ["type": "json_object"],
+            "temperature": 0.1
+        ]
+        
+        return try JSONSerialization.data(withJSONObject: parameters)
+    }
+    
+    private func systemPrompt(for language: Language) -> String {
+        let outputLanguageInstruction = language == .japanese
+        ? "- 言語: **必ず日本語で出力すること。**"
+        : "- Language: **Output MUST be in English.**"
+        
+        let moneyInstruction = language == .japanese
+        ? "- 金額やパーセンテージを検出したら、必ず数値・単位・条件をそのまま引用し、誤差や追加費用の可能性も説明してください。"
+        : "- When monetary values or percentages appear, quote the exact numbers/units/conditions and explain hidden costs or uncertainties."
+        
+        return """
         あなたは、ユーザーの生活を徹底的に守る**「完全網羅型ドキュメント解析AI」**です。
         入力されたテキストの**一字一句を精査**し、ユーザーにとって少しでも不利益、リスク、または注意すべき点があれば、**一切の省略を許さず全てリストアップ**してください。
         
@@ -102,7 +174,9 @@ class OpenAIService {
         - 文体: ユーザーの頼れるパートナーとして、専門用語を使わず、**背景や理由まで含めて親切・丁寧に**解説してください。
         - 分量: **無理に短くまとめる必要はありません。** ユーザーが十分に理解できるよう、必要な情報をすべて盛り込んでください。
         \(outputLanguageInstruction)
+        \(moneyInstruction)
         - 法的免責: 弁護士ではないため、法的な断定は避け「注意が必要です」「確認をお勧めします」という表現にとどめること。
+        - 追加チェック: リンクや注釈の先に費用や制限が隠れていないか推測し、調査または問い合わせを促してください。
         
         【JSON出力フォーマット】
         以下の形式のみを出力してください。Markdownは含めないでください。
@@ -127,71 +201,5 @@ class OpenAIService {
         - low: **参考**（知っておくと良い情報、些細な修正案）。
         - info: **基本情報**（金額、日付、場所など）。
         """
-        
-        let parameters: [String: Any] = [
-            "model": model, // 指定されたモデルを使用
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": "以下の文書を解析してください。\n\n\(text)"]
-            ],
-            "response_format": ["type": "json_object"],
-            "temperature": 0.1
-        ]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
-        } catch {
-            completion(.failure(error))
-            return
-        }
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            
-            if let httpResponse = response as? HTTPURLResponse {
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    let errorMessage = "HTTPエラー: \(httpResponse.statusCode)"
-                    completion(.failure(OpenAIError.apiError(errorMessage)))
-                    return
-                }
-            }
-            
-            guard let data = data else {
-                completion(.failure(OpenAIError.noData))
-                return
-            }
-            
-            do {
-                struct OpenAIResponse: Decodable {
-                    struct Choice: Decodable {
-                        struct Message: Decodable {
-                            let content: String
-                        }
-                        let message: Message
-                    }
-                    let choices: [Choice]
-                }
-                
-                let aiResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
-                guard let content = aiResponse.choices.first?.message.content,
-                      let contentData = content.data(using: .utf8) else {
-                    completion(.failure(OpenAIError.decodingError))
-                    return
-                }
-                
-                let result = try Self.decodeAnalysisResult(from: contentData)
-                
-                DispatchQueue.main.async {
-                    completion(.success(result))
-                }
-                
-            } catch {
-                print("Decoding Error: \(error)")
-                completion(.failure(error))
-            }
-        }.resume()
     }
 }

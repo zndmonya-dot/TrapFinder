@@ -11,87 +11,14 @@ struct AnalysisResultView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 30) {
-                    // ヘッダー（スコア表示を削除し、文書タイプと要約を中心に配置）
-                    VStack(spacing: 24) {
-                        // 文書タイプのアイコン（汎用的なドキュメントアイコン）
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 50))
-                            .foregroundColor(Color(hex: "E07A5F"))
-                            .padding(20)
-                            .background(Color.white)
-                            .clipShape(Circle())
-                            .shadow(color: Color(hex: "E07A5F").opacity(0.2), radius: 10, x: 0, y: 5)
-                        
-                        VStack(spacing: 12) {
-                            Text(result.contractType)
-                                .font(.system(size: 28, weight: .heavy, design: .rounded))
-                                .fontWeight(.heavy) // より強調
-                                .foregroundColor(Color(hex: "3D405B"))
-                                .multilineTextAlignment(.center)
-                            
-                            Text(result.summary)
-                                .font(.system(size: 16, design: .rounded))
-                                .foregroundColor(Color(hex: "3D405B").opacity(0.8))
-                                .lineSpacing(6)
-                                .multilineTextAlignment(.leading)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 16)
-                                .background(Color.white)
-                                .cornerRadius(16)
-                                .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                                .padding(.horizontal)
-                        }
-                    }
-                    .padding(.top, 30)
-                    
-                    // リスクカード一覧
-                    if result.risks.isEmpty {
-                        EmptyRiskView()
-                    } else {
-                        VStack(spacing: 20) {
-                            HStack {
-                                Image(systemName: "list.bullet.rectangle.portrait.fill")
-                                    .foregroundColor(Color(hex: "E07A5F"))
-                                Text(L10n.risksDetected.text)
-                                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(hex: "E07A5F"))
-                                Spacer()
-                                
-                                // 件数バッジ
-                                Text("\(result.risks.count)\(L10n.items.text)")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(Color(hex: "E07A5F"))
-                                    .clipShape(Capsule())
-                            }
-                            .padding(.horizontal, 24)
-                            
-                            ForEach(Array(result.risks.enumerated()), id: \.element.id) { index, risk in
-                                RiskCardView(risk: risk, index: index + 1)
-                            }
-                        }
-                    }
-                    
-                    // 免責事項（フッター）
-                    VStack(spacing: 4) {
-                        Text(L10n.disclaimer.text)
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(hex: "3D405B").opacity(0.5))
-                        
-                        Text(L10n.reportFooter.text)
-                            .font(.system(size: 10, design: .rounded))
-                            .foregroundColor(Color(hex: "3D405B").opacity(0.4))
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(2)
-                            .padding(.horizontal, 40)
-                    }
-                    .padding(.top, 10)
+                    headerSection
+                    riskSection
+                    disclaimerSection
                 }
+                .padding(.top, 30)
                 .padding(.bottom, 60)
             }
-            .background(Color(hex: "FFF8F0").ignoresSafeArea()) // 共通の背景色
+            .background(Color(hex: "FFF8F0").ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -115,77 +42,181 @@ struct AnalysisResultView: View {
                 }
             }
             .sheet(isPresented: $isShowingShareSheet) {
-                ShareSheet(activityItems: [generateReportText()])
+                ShareSheet(activityItems: [reportGenerator.generate()])
             }
         }
     }
     
-    private func generateReportText() -> String {
-        let dateFormatter = DateFormatter()
-        let localeIdentifier = languageManager.currentLanguage == .japanese ? "ja_JP" : "en_US"
-        dateFormatter.locale = Locale(identifier: localeIdentifier)
-        dateFormatter.dateStyle = .long
-        dateFormatter.timeStyle = .none
-        let dateString = dateFormatter.string(from: Date())
-        
-        let currentLanguage = LanguageManager.shared.currentLanguage
-        let dateLabel = currentLanguage == .japanese ? L10n.reportDate.text : L10n.reportDate.text
-        
-        var text = """
-        \(L10n.reportTitle.text)
-        \(dateLabel): \(dateString)
-        
-        \(L10n.documentType.text)
-        \(result.contractType)
-        
-        \(L10n.summarySection.text)
-        \(result.summary)
-        
-        --------------------------------------------------
-        
-        """
-        
-        if result.risks.isEmpty {
-            text += "\n\(L10n.noIssuesFound.text)\n"
-        } else {
-            text += String(format: L10n.checkPoints.text, result.risks.count) + "\n\n"
+    private var reportGenerator: ReportGenerator {
+        ReportGenerator(result: result, language: languageManager.currentLanguage)
+    }
+    
+    @ViewBuilder
+    private var headerSection: some View {
+        AnalysisHeaderView(result: result)
+            .padding(.horizontal)
+    }
+    
+    @ViewBuilder
+    private var riskSection: some View {
+        RiskListView(risks: result.risks)
+            .padding(.horizontal)
+    }
+    
+    @ViewBuilder
+    private var disclaimerSection: some View {
+        VStack(spacing: 4) {
+            Text(L10n.disclaimer.text)
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundColor(Color(hex: "3D405B").opacity(0.5))
             
-            for (index, risk) in result.risks.enumerated() {
-                let severityLabel: String
-                switch risk.severity {
-                case .high: severityLabel = currentLanguage == .japanese ? "[重要]" : "[ALERT]"
-                case .medium: severityLabel = currentLanguage == .japanese ? "[注意]" : "[WARN]"
-                case .low: severityLabel = currentLanguage == .japanese ? "[確認]" : "[NOTE]"
-                case .info: severityLabel = currentLanguage == .japanese ? "[情報]" : "[INFO]"
-                }
-                
-                text += """
-                \(index + 1). \(severityLabel) \(risk.title)
-                
-                \(L10n.originalText.text)
-                "\(risk.quote)"
-                
-                \(L10n.explanationSection.text)
-                \(risk.description)
-                
-                \(L10n.advice.text)
-                \(risk.suggestion)
-                
-                
-                """
-            }
+            Text(L10n.reportFooter.text)
+                .font(.system(size: 10, design: .rounded))
+                .foregroundColor(Color(hex: "3D405B").opacity(0.4))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .padding(.horizontal, 40)
         }
-        
-        text += """
-        --------------------------------------------------
-        \(L10n.reportFooter.text)
-        """
-        
-        return text
+        .padding(.top, 10)
     }
 }
 
 // MARK: - Components
+
+private struct AnalysisHeaderView: View {
+    let result: AnalysisResult
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 50))
+                .foregroundColor(Color(hex: "E07A5F"))
+                .padding(20)
+                .background(Color.white)
+                .clipShape(Circle())
+                .shadow(color: Color(hex: "E07A5F").opacity(0.2), radius: 10, x: 0, y: 5)
+            
+            VStack(spacing: 12) {
+                Text(result.contractType)
+                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .foregroundColor(Color(hex: "3D405B"))
+                    .multilineTextAlignment(.center)
+                
+                Text(result.summary)
+                    .font(.system(size: 16, design: .rounded))
+                    .foregroundColor(Color(hex: "3D405B").opacity(0.8))
+                    .lineSpacing(6)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(Color.white)
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+            }
+        }
+    }
+}
+
+private struct RiskListView: View {
+    let risks: [RiskItem]
+    
+    var body: some View {
+        if risks.isEmpty {
+            EmptyRiskView()
+        } else {
+            VStack(spacing: 20) {
+                header
+                ForEach(Array(risks.enumerated()), id: \.element.id) { index, risk in
+                    RiskCardView(risk: risk, index: index + 1)
+                }
+            }
+        }
+    }
+    
+    private var header: some View {
+        HStack {
+            Image(systemName: "list.bullet.rectangle.portrait.fill")
+                .foregroundColor(Color(hex: "E07A5F"))
+            Text(L10n.risksDetected.text)
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundColor(Color(hex: "E07A5F"))
+            Spacer()
+            Text("\(risks.count)\(L10n.items.text)")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color(hex: "E07A5F"))
+                .clipShape(Capsule())
+        }
+    }
+}
+
+private struct ReportGenerator {
+    let result: AnalysisResult
+    let language: Language
+    
+    func generate() -> String {
+        var builder = [String]()
+        builder.append(L10n.reportTitle.text)
+        builder.append("\(L10n.reportDate.text): \(formattedDate())")
+        builder.append("")
+        builder.append(L10n.documentType.text)
+        builder.append(result.contractType)
+        builder.append("")
+        builder.append(L10n.summarySection.text)
+        builder.append(result.summary)
+        builder.append("")
+        builder.append("--------------------------------------------------")
+        builder.append("")
+        
+        if result.risks.isEmpty {
+            builder.append(L10n.noIssuesFound.text)
+        } else {
+            builder.append(String(format: L10n.checkPoints.text, result.risks.count))
+            builder.append("")
+            result.risks.enumerated().forEach { index, risk in
+                builder.append(contentsOf: riskBlock(for: risk, index: index + 1))
+            }
+        }
+        
+        builder.append("--------------------------------------------------")
+        builder.append(L10n.reportFooter.text)
+        return builder.joined(separator: "\n")
+    }
+    
+    private func formattedDate() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: language == .japanese ? "ja_JP" : "en_US")
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter.string(from: Date())
+    }
+    
+    private func riskBlock(for risk: RiskItem, index: Int) -> [String] {
+        var lines: [String] = []
+        lines.append("\(index). \(label(for: risk.severity)) \(risk.title)")
+        lines.append("")
+        lines.append(L10n.originalText.text)
+        lines.append("\"\(risk.quote)\"")
+        lines.append("")
+        lines.append(L10n.explanationSection.text)
+        lines.append(risk.description)
+        lines.append("")
+        lines.append(L10n.advice.text)
+        lines.append(risk.suggestion)
+        lines.append("")
+        return lines
+    }
+    
+    private func label(for severity: RiskSeverity) -> String {
+        switch severity {
+        case .high: return language == .japanese ? "[重要]" : "[ALERT]"
+        case .medium: return language == .japanese ? "[注意]" : "[WARN]"
+        case .low: return language == .japanese ? "[確認]" : "[NOTE]"
+        case .info: return language == .japanese ? "[情報]" : "[INFO]"
+        }
+    }
+}
 
 struct ShareSheet: UIViewControllerRepresentable {
     let activityItems: [Any]
@@ -207,30 +238,8 @@ struct RiskCardView: View {
     let index: Int
     @State private var isExpanded = false
     
-    var severityColor: Color {
-        switch risk.severity {
-        case .high: return Color(hex: "E07A5F") // Terracotta
-        case .medium: return Color(hex: "F2CC8F") // Mustard
-        case .low: return Color(hex: "81B29A") // Sage Green
-        case .info: return Color(hex: "3D405B") // Charcoal
-        }
-    }
-    
-    var severityTextColor: Color {
-        // 背景色が明るい場合(Medium)は黒文字にする、他は白文字
-        switch risk.severity {
-        case .medium: return Color(hex: "3D405B")
-        default: return .white
-        }
-    }
-    
-    var severityText: String {
-        switch risk.severity {
-        case .high: return L10n.high.text
-        case .medium: return L10n.medium.text
-        case .low: return L10n.low.text
-        case .info: return L10n.info.text
-        }
+    private var severityStyle: RiskSeverityStyle {
+        RiskSeverityStyle(for: risk.severity)
     }
     
     var body: some View {
@@ -244,13 +253,13 @@ struct RiskCardView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         HStack {
-                            Text(severityText)
+                            Text(severityStyle.label)
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .fontWeight(.bold)
-                                .foregroundColor(severityTextColor)
+                                .foregroundColor(severityStyle.textColor)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(severityColor)
+                                .background(severityStyle.background)
                                 .cornerRadius(8)
                             Spacer()
                         }
@@ -368,5 +377,32 @@ struct EmptyRiskView: View {
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
         .padding()
+    }
+}
+
+private struct RiskSeverityStyle {
+    let label: String
+    let background: Color
+    let textColor: Color
+    
+    init(for severity: RiskSeverity) {
+        switch severity {
+        case .high:
+            label = L10n.high.text
+            background = Color(hex: "E07A5F")
+            textColor = .white
+        case .medium:
+            label = L10n.medium.text
+            background = Color(hex: "F2CC8F")
+            textColor = Color(hex: "3D405B")
+        case .low:
+            label = L10n.low.text
+            background = Color(hex: "81B29A")
+            textColor = .white
+        case .info:
+            label = L10n.info.text
+            background = Color(hex: "3D405B")
+            textColor = .white
+        }
     }
 }
