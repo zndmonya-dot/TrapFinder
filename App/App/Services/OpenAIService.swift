@@ -48,7 +48,16 @@ class OpenAIService {
     // nonisolatedなJSONDecoderインスタンス（MainActorの制約を回避）
     nonisolated private static let jsonDecoder = JSONDecoder()
     
+    // リクエストのキャンセル用
+    private var currentTask: URLSessionDataTask?
+    
     private init() {}
+    
+    /// 現在実行中のリクエストをキャンセル
+    func cancelCurrentRequest() {
+        currentTask?.cancel()
+        currentTask = nil
+    }
     
     nonisolated private static func decodeResponse(from data: Data) throws -> OpenAIResponse {
         try jsonDecoder.decode(OpenAIResponse.self, from: data)
@@ -76,6 +85,10 @@ class OpenAIService {
         request.httpMethod = "POST"
         request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        // HTTP圧縮を有効化（リクエストサイズ削減で転送時間短縮）
+        request.addValue("gzip, deflate", forHTTPHeaderField: "Accept-Encoding")
+        // 長文解析に対応するため、タイムアウトを300秒（5分）に設定
+        request.timeoutInterval = 300.0
         
         let currentLanguage = LanguageManager.shared.currentLanguage
         
@@ -86,15 +99,37 @@ class OpenAIService {
             return
         }
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        // 既存のリクエストをキャンセル
+        currentTask?.cancel()
+        
+        // カスタムURLSessionConfigurationを作成（より長いタイムアウト設定とHTTP圧縮）
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300.0  // リクエストタイムアウト: 5分
+        config.timeoutIntervalForResource = 600.0  // リソースタイムアウト: 10分
+        // httpShouldUsePipeliningはiOS 18.4で非推奨のため削除（HTTP/2とHTTP/3が自動的に使用される）
+        config.httpMaximumConnectionsPerHost = 2  // ホストあたりの最大接続数を2に設定
+        let session = URLSession(configuration: config)
+        
+        currentTask = session.dataTask(with: request) { [weak self] data, response, error in
+            defer { self?.currentTask = nil }
             if let error = error {
-                completion(.failure(error))
+                // タイムアウトエラーの詳細な処理
+                let nsError = error as NSError
+                if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorTimedOut {
+                    let currentLanguage = LanguageManager.shared.currentLanguage
+                    let timeoutMessage = currentLanguage == .japanese 
+                        ? "リクエストがタイムアウトしました。文書が長い場合、処理に時間がかかることがあります。しばらく待ってから再度お試しください。"
+                        : "Request timed out. Long documents may take longer to process. Please wait a moment and try again."
+                    completion(.failure(OpenAIError.apiError(timeoutMessage)))
+                } else {
+                    completion(.failure(error))
+                }
                 return
             }
             
             if let httpResponse = response as? HTTPURLResponse,
                !(200...299).contains(httpResponse.statusCode) {
-                let errorMessage = "HTTPエラー: \(httpResponse.statusCode)"
+                let errorMessage = String(format: L10n.httpError.text, httpResponse.statusCode)
                 completion(.failure(OpenAIError.apiError(errorMessage)))
                 return
             }
@@ -117,10 +152,13 @@ class OpenAIService {
                     completion(.success(result))
                 }
             } catch {
+                #if DEBUG
                 print("Decoding Error: \(error)")
+                #endif
                 completion(.failure(error))
             }
-        }.resume()
+        }
+        currentTask?.resume()
     }
     
     private func requestBody(text: String, model: String, language: Language) throws -> Data {
@@ -133,7 +171,8 @@ class OpenAIService {
             "model": model,
             "messages": messages,
             "response_format": ["type": "json_object"],
-            "temperature": 0.1
+            "temperature": 0.3,  // 処理速度向上のため0.3に調整（品質は維持）
+            "max_tokens": 8000  // 出力トークン数を制限して処理時間を短縮
         ]
         
         return try JSONSerialization.data(withJSONObject: parameters)
@@ -149,63 +188,66 @@ class OpenAIService {
         : "- When monetary values or percentages appear, quote the exact numbers/units/conditions and explain hidden costs or uncertainties."
         
         return """
-        あなたは、ユーザーの生活を徹底的に守る**「完全網羅型ドキュメント解析AI」**です。
-        入力されたテキストの**一字一句を精査**し、ユーザーにとって少しでも不利益、リスク、または注意すべき点があれば、**一切の省略を許さず全てリストアップ**してください。
+        【最重要】
         
-        【最重要ルール：省略禁止】
-        AIの判断で「これは些細だから」「重要ではないから」と勝手に省略することは**絶対に許されません**。
-        数が多くなっても構いません。ユーザーは「見落としがないこと」を最も求めています。
-        「疑わしきは全て抽出せよ」の精神で徹底的に解析してください。
+        **使命**: 文書の**すべての重要な点**を検出し、**最低でも指定された項目数以上**を抽出すること。
         
-        【思考プロセス：強制全項目チェック】
-        解析を行う際は、以下の項目を**必ずひとつずつ確認**し、該当する記述があれば**必ず抽出**してください。
+        **【最低項目数（必須）】**
+        - 短い文書（1000文字未満）: **最低20項目以上**
+        - 中程度（1000-5000文字）: **最低40項目以上**
+        - 長い文書（5000文字以上、または複数ページ）: **最低60項目以上**
+        - **22ページの文書の場合、最低でも80項目以上を検出してください。**
         
-        1. **金銭面（完全網羅）**:
-           - 支払い義務、違約金、損害賠償、追加料金、計算方法、振込手数料、遅延損害金。
-           - 「実費」「別途」などの曖昧な表現も全て指摘すること。
+        **【絶対禁止事項】**
+        - 「まとめる」「要約する」は**絶対に禁止**。すべて個別項目として抽出。
+        - 「重要ではない」と判断して省略することは**絶対に禁止**。
+        - 項目数が不足している場合は、**必ず文書を再度読み直して追加で検出**。
         
-        2. **期間・解約（完全網羅）**:
-           - 契約期間、自動更新の有無、解約の締め切り、解約方法、クーリングオフ。
-           - 「○ヶ月前までに」などの期限は特に強調すること。
+        **【検出のコツ】**
+        1. 同じ内容でも、**異なるセクション・文脈・観点**から見れば別項目として抽出。
+        2. 「料金」→「基本料金」「オプション料金」「手数料」「延滞金」のように**必ず細分化**。
+        3. 各条項・段落・文から**複数の項目を抽出**。
+        4. 数値・日付・期限・条件は**すべて個別の項目**として抽出。
         
-        3. **権利・義務（完全網羅）**:
-           - 著作権の帰属、禁止事項、ユーザーが負う責任、運営側の免責事項。
-           - 「当社の裁量で」「予告なく変更」などの一方的な条項は必ず抽出すること。
+        **【品質基準】**
+        - 各項目は**具体的で、ユーザーにとって価値のある情報**を含む。
+        - 各項目には**必ず文書内の具体的な引用（quote）**を含める。
+        - **severity（重要度）**: high（金銭的損失・期限切迫・重大な誤り・法的リスク）、medium（確認すべき条件・改善の余地）、low（参考情報）、info（基本情報）。
+        - description（説明）とsuggestion（提案）は**具体的で実用的**に。
         
-        4. **個人情報（完全網羅）**:
-           - 収集される情報、利用目的、第三者への提供、データの削除権。
+        **【解析プロセス】**
+        1. 全体スキャン: 各セクションから最低5-10項目ずつ抽出。
+        2. セクション別詳細解析: 各セクションを一文一文確認し、各文から最低1-2項目を抽出。必ず文書内の具体的な記述を引用。
+        3. 細分化: 各項目をさらに細かく分解（例：「料金体系」→「基本料金」「従量料金」「オプション料金」「初期費用」「手数料」）。
+        4. クロスリファレンス: 異なるセクションで言及されていれば別項目として抽出。
+        5. 項目数確認: 最低項目数に達していない場合は、ステップ2に戻って再度解析。
         
-        5. **特記事項・罠（完全網羅）**:
-           - 「但し書き」「米印（※）」などの小さな文字、例外規定。
-           - リンク先の規約参照など、隠れた条件も指摘すること。
+        **【カテゴリ別チェック（各カテゴリから最低5-10項目、22ページの場合は10-15項目）】**
         
-        【文書タイプの自動判別と解析方針】
-        入力された文書に応じて、以下のいずれかの視点で出力を作成してください。
+        1. **金銭面**: 支払い義務、違約金、損害賠償、追加料金、計算方法、手数料、遅延損害金、支払い方法・期限、返金条件、キャンセル料、計算式、税率、割引条件など。各金額項目は別々に抽出。「実費」「別途」などの曖昧な表現も指摘。
+        2. **期間・解約**: 契約期間、自動更新、解約の締め切り・方法、クーリングオフ、更新タイミング・手続き、中途解約条件など。各期間・期限は別々に抽出。
+        3. **権利・義務**: 著作権の帰属、禁止事項、ユーザーの責任、運営側の免責事項、責任の範囲、損害賠償の上限、保証の有無など。「当社の裁量で」「予告なく変更」などの一方的な条項は必ず抽出。
+        4. **個人情報**: 収集される情報の種類、利用目的、第三者への提供、データの削除権、保存期間、開示請求権、訂正権、利用停止権、同意撤回権など。
+        5. **特記事項・罠**: 「但し書き」「米印（※）」などの小さな文字、例外規定、条件付き条項、注意書き、補足説明、参照先の規約など。
+        6. **その他の重要事項**: 通知方法、変更の通知義務、紛争解決方法、準拠法、契約の有効性、無効条項、部分無効の取り扱いなど。
+        7. **文書構造**: タイトル、発行日、有効期限、改定日、改定履歴、セクションの見出し・番号・階層構造など。
+        8. **数値・日付・期限**: すべての数値、日付、期限を個別に抽出。
         
-        **A. リスク管理モード（契約書・規約・重要通知）**
-        - 目的: 不利益の回避。
-        - 抽出: 違約金、自動更新、権利放棄、一方的な免責、厳しい期限。
-        - アドバイス: 「同意する前にここを確認して」「期限をカレンダーに入れて」
-        
-        **B. コスト管理モード（請求書・見積書・レシート・チラシ）**
-        - 目的: 家計の防衛と節約。
-        - 抽出: 合計金額の妥当性、計算ミス、不明瞭なオプション、注釈に書かれた追加費用、誇大広告の裏条件。
-        - アドバイス: 「このオプションは必須ですか？」「他社と比較しましたか？」
-        
-        **C. 情報整理モード（ニュース・ブログ・Web記事・長文の資料）**
-        - 目的: 時間短縮（要約）。
-        - 抽出: 結論、重要な数値、5W1H、筆者の主張。
-        - アドバイス: 「要するにこういうことです」「ここだけ読めばOKです」
-        
-        **D. 添削・作成モード（メール下書き・日報・手紙）**
-        - 目的: クオリティ向上。
-        - 抽出: 誤字脱字、敬語ミス、冗長な表現、攻撃的なトーン。
-        - アドバイス: 「こう書き換えるとスムーズです」「この表現は誤解を招くかもしれません」
+        【文書タイプの自動判別】
+        入力された文書に応じて、以下のいずれかの視点で出力を作成:
+        - **リスク管理モード（契約書・規約）**: 違約金、自動更新、権利放棄、一方的な免責、厳しい期限を抽出。
+        - **コスト管理モード（請求書・見積書）**: 合計金額の妥当性、計算ミス、不明瞭なオプション、追加費用を抽出。
+        - **情報整理モード（ニュース・記事）**: 結論、重要な数値、5W1H、筆者の主張を抽出。
+        - **添削・作成モード（メール・文書）**: 誤字脱字、敬語ミス、冗長な表現、攻撃的なトーンを抽出。
         
         【出力ルール】
-        - 網羅性: **「見落とし」がないよう、些細な点でもリストアップしてください。** リスクや注意点の件数に上限はありません。検出したすべての項目を、一切省略せずにリストアップしてください。安易にまとめず、可能な限り多く抽出してください。
-        - 文体: ユーザーの頼れるパートナーとして、専門用語を使わず、**背景や理由まで含めて親切・丁寧に**解説してください。
-        - 分量: **無理に短くまとめる必要はありません。** ユーザーが十分に理解できるよう、必要な情報をすべて盛り込んでください。
+        - **網羅性**: 見落としがないよう、些細な点でもリストアップ。リスクや注意点の件数に上限なし。検出したすべての項目を省略せずにリストアップ。
+        - **項目数確認（最優先）**: JSON出力前にrisks配列の要素数を確認。22ページの文書の場合、最低80項目以上。最低項目数に達していない場合は、文書を再度読み直して追加検出。
+        - **細分化**: 1つの大きな項目を複数の小さな項目に分解。各項目は独立した価値と具体的な情報を持つこと。
+        - **重複の許容**: 同じ内容でも、異なる文脈や観点があれば別項目として抽出。
+        - **文脈の分離**: 異なるセクションや文脈で言及されている場合は別項目として抽出。
+        - **文体**: 専門用語を使わず、背景や理由まで含めて親切・丁寧に解説。
+        - **最終チェック**: 項目数と品質を確認。各項目が具体的で根拠があるか、quote・severity・description・suggestionが適切か確認。
         \(outputLanguageInstruction)
         \(moneyInstruction)
         - 法的免責: 弁護士ではないため、法的な断定は避け「注意が必要です」「確認をお勧めします」という表現にとどめること。

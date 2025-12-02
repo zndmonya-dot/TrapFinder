@@ -117,6 +117,8 @@ enum L10n {
     static var upgradeToPro: LocalizedString { LocalizedString(ja: "アップグレード", en: "Upgrade") }
     static var dailyLimit: LocalizedString { LocalizedString(ja: "本日の残り回数", en: "Daily Limit Left") }
     static var limit3perDay: LocalizedString { LocalizedString(ja: "1日3回まで", en: "3 times / day") }
+    static var unlimitedWithAds: LocalizedString { LocalizedString(ja: "動画広告視聴で回数無制限", en: "Unlimited scans with video ads") }
+    static var noAds: LocalizedString { LocalizedString(ja: "広告非表示", en: "No ads") }
     static var charLimit5k: LocalizedString { LocalizedString(ja: "5,000文字まで", en: "Up to 5k chars") }
     static var times: LocalizedString { LocalizedString(ja: "回", en: "times") }
     static var appInfo: LocalizedString { LocalizedString(ja: "アプリ情報", en: "App Info") }
@@ -128,9 +130,9 @@ enum L10n {
     static var upgradeTitle: LocalizedString { LocalizedString(ja: "プランを選択", en: "Choose Your Plan") }
     static var upgradeSubtitle: LocalizedString { LocalizedString(ja: "あなたの利用スタイルに合わせて\n最適なプランをお選びください", en: "Choose the plan that fits your style") }
     
-    static var standardPrice: LocalizedString { LocalizedString(ja: "¥480 / 月", en: "¥480 / Month") }
+    static var standardPrice: LocalizedString { LocalizedString(ja: "¥780 / 月", en: "¥780 / Month") }
     static var freePrice: LocalizedString { LocalizedString(ja: "無料", en: "Free") }
-    static var proPrice: LocalizedString { LocalizedString(ja: "¥980 / 月", en: "¥980 / Month") }
+    static var proPrice: LocalizedString { LocalizedString(ja: "¥1,180 / 月", en: "¥1,180 / Month") }
     
     static var unlimitedScans: LocalizedString { LocalizedString(ja: "回数無制限", en: "Unlimited Scans") }
     static var standardAI: LocalizedString { LocalizedString(ja: "標準AI (GPT-4o-mini)", en: "Standard AI") }
@@ -138,7 +140,7 @@ enum L10n {
     static var charLimit10k: LocalizedString { LocalizedString(ja: "1回 10,000文字まで", en: "10k chars / scan") }
     static var charLimit100k: LocalizedString { LocalizedString(ja: "1回 100,000文字まで", en: "100k chars / scan") }
     static var charLimit50k: LocalizedString { LocalizedString(ja: "1回 50,000文字まで", en: "50k chars / scan") }
-    static var limit20perDay: LocalizedString { LocalizedString(ja: "1日20回まで", en: "20 times / day") }
+    static var limit10perDay: LocalizedString { LocalizedString(ja: "1日10回まで（制限到達時は自動で標準AIに切り替え）", en: "10 times / day (auto-switch to standard AI when limit reached)") }
     static var detailedAnalysis: LocalizedString { LocalizedString(ja: "より詳細なAI解説", en: "Detailed AI Analysis") }
     static var proFeatures: LocalizedString { LocalizedString(ja: "高性能AI + 無制限 (モデル選択可)", en: "High-Performance + Unlimited (Selectable)") }
     static var upgradeCta: LocalizedString { LocalizedString(ja: "アップグレードする", en: "Upgrade") }
@@ -156,6 +158,21 @@ enum L10n {
     static var purchaseCancelled: LocalizedString { LocalizedString(ja: "購入がキャンセルされました", en: "Purchase was cancelled") }
     static var restoreSuccess: LocalizedString { LocalizedString(ja: "購入を復元しました", en: "Purchases restored") }
     static var restoreNoPurchases: LocalizedString { LocalizedString(ja: "復元できる購入が見つかりませんでした", en: "No purchases found to restore") }
+    static var purchasePending: LocalizedString { LocalizedString(ja: "購入が保留中です。承認をお待ちください。", en: "Purchase is pending. Please wait for approval.") }
+    
+    // Error Messages
+    static var analysisError: LocalizedString { LocalizedString(ja: "解析エラー", en: "Analysis Error") }
+    static var analysisErrorWithDescription: LocalizedString { LocalizedString(ja: "解析エラー: %@", en: "Analysis Error: %@") }
+    static var cameraPermissionMissing: LocalizedString { LocalizedString(ja: "カメラの使用許可設定が不足しています。開発者にお問い合わせください。", en: "Camera permission setting is missing. Please contact the developer.") }
+    static var pdfLoadError: LocalizedString { LocalizedString(ja: "PDFを読み込めませんでした", en: "Failed to load PDF") }
+    static var invalidURL: LocalizedString { LocalizedString(ja: "http:// または https:// で始まる正しいURLを入力してください。", en: "Please enter a valid URL starting with http:// or https://") }
+    static var textRecognitionError: LocalizedString { LocalizedString(ja: "文字を読み取れませんでした", en: "Failed to recognize text") }
+    static var fileLoadError: LocalizedString { LocalizedString(ja: "ファイル読み込みエラー: %@", en: "File load error: %@") }
+    static var webPageLoadError: LocalizedString { LocalizedString(ja: "ページからテキストを読み取れませんでした。ページが空か、アクセスできない可能性があります。", en: "Failed to read text from the page. The page may be empty or inaccessible.") }
+    static var productLoadError: LocalizedString { LocalizedString(ja: "製品情報の取得に失敗しました: %@", en: "Failed to load product information: %@") }
+    static var productLoadErrorDebug: LocalizedString { LocalizedString(ja: "製品情報の取得に失敗しました: %@\n\n【開発者向け】\nApp Store Connectで製品を設定しているか確認してください。", en: "Failed to load product information: %@\n\n[For Developers]\nPlease check if products are configured in App Store Connect.") }
+    static var planNotFound: LocalizedString { LocalizedString(ja: "プランが見つかりませんでした。\n\n【開発者向け】\nApp Store Connectで製品ID「standard_monthly」を設定してください。\n\n現在の製品数: %d", en: "Plan not found.\n\n[For Developers]\nPlease configure product ID \"standard_monthly\" in App Store Connect.\n\nCurrent product count: %d") }
+    static var httpError: LocalizedString { LocalizedString(ja: "HTTPエラー: %d", en: "HTTP Error: %d") }
     
     // Legal Disclaimer
     static var legalTitle: LocalizedString { LocalizedString(ja: "利用上の重要なお知らせ", en: "Important Legal Notice") }

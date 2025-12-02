@@ -16,6 +16,8 @@ enum PlanConfiguration {
             return nil // フリープランは購入不要
         case .standard:
             return standardPlanID
+        case .pro:
+            return proPlanID
         }
     }
     

@@ -7,26 +7,31 @@ import StoreKit
 enum UserPlan: String, CaseIterable {
     case free
     case standard
+    case pro
     
     var name: String {
         switch self {
         case .free: return L10n.freePlan.text
         case .standard: return L10n.standardPlan.text
+        case .pro: return L10n.proPlan.text
         }
     }
     
-    // 使用するAIモデル（デフォルト値）
+    // 使用するAIモデル
     var aiModel: String {
         switch self {
         case .free, .standard: return "gpt-4o-mini"
+        case .pro: return "gpt-4o"  // プロプランは高性能AIモデル
         }
     }
     
     // 1日の回数制限（-1は無制限）
+    // フリープランは動画広告を視聴するたびに解析可能なため、無制限
     var dailyLimit: Int {
         switch self {
-        case .free: return 3
+        case .free: return -1  // 動画広告視聴で無制限
         case .standard: return -1
+        case .pro: return 10  // プロプランは1日10回まで
         }
     }
     
@@ -35,7 +40,7 @@ enum UserPlan: String, CaseIterable {
         switch self {
         case .free:
             return 10_000
-        case .standard:
+        case .standard, .pro:
             return 100_000
         }
     }
@@ -61,7 +66,7 @@ class StoreKitService: NSObject, ObservableObject {
     private let lastScanDateKey = "lastScanDate"
     
     // 製品ID（App Store Connectで設定する必要がある）
-    private let productIDs = ["standard_monthly"]
+    private let productIDs = ["standard_monthly", "pro_monthly"]
     
     // トランザクション更新の監視タスク
     private var updateListenerTask: Task<Void, Error>?
@@ -72,6 +77,11 @@ class StoreKitService: NSObject, ObservableObject {
         
         // トランザクション更新を監視
         updateListenerTask = listenForTransactions()
+        
+        #if DEBUG
+        // デバッグモードでは強制的にスタンダードプランに設定（テスト用）
+        currentPlan = .standard
+        #endif
         
         // 初期状態を取得
         Task {
@@ -87,13 +97,32 @@ class StoreKitService: NSObject, ObservableObject {
     /// トランザクション更新を監視
     private func listenForTransactions() -> Task<Void, Error> {
         return Task.detached {
+            var consecutiveErrors = 0
+            let maxConsecutiveErrors = 5
+            
             for await result in Transaction.updates {
                 do {
                     let transaction = try Self.checkVerified(result)
                     await self.updateSubscriptionStatus()
                     await transaction.finish()
+                    consecutiveErrors = 0 // 成功したらエラーカウントをリセット
                 } catch {
-                    print("Transaction verification failed: \(error)")
+                    consecutiveErrors += 1
+                    #if DEBUG
+                    print("Transaction verification failed (\(consecutiveErrors)/\(maxConsecutiveErrors)): \(error)")
+                    #endif
+                    
+                    // 連続エラーが多すぎる場合は、エラーメッセージを表示
+                    if consecutiveErrors >= maxConsecutiveErrors {
+                        await MainActor.run {
+                            self.errorMessage = L10n.purchaseErrorGeneric.text
+                        }
+                        // エラーカウントをリセット（ユーザーに通知した後）
+                        consecutiveErrors = 0
+                    }
+                    
+                    // エラー時は少し待機してから続行（レート制限対策）
+                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
                 }
             }
         }
@@ -130,11 +159,13 @@ class StoreKitService: NSObject, ObservableObject {
             #endif
         } catch {
             #if DEBUG
-            self.errorMessage = "製品情報の取得に失敗しました: \(error.localizedDescription)\n\n【開発者向け】\nApp Store Connectで製品を設定しているか確認してください。"
+            self.errorMessage = String(format: L10n.productLoadErrorDebug.text, error.localizedDescription)
             #else
-            self.errorMessage = "製品情報の取得に失敗しました: \(error.localizedDescription)"
+            self.errorMessage = String(format: L10n.productLoadError.text, error.localizedDescription)
             #endif
+            #if DEBUG
             print("Failed to load products: \(error)")
+            #endif
         }
     }
     
@@ -159,16 +190,32 @@ class StoreKitService: NSObject, ObservableObject {
         }
         
         // プランを更新
+        #if DEBUG
+        // デバッグモードでは常にスタンダードプラン（テスト用）
+        currentPlan = .standard
+        #else
         currentPlan = hasActiveSubscription ? .standard : .free
+        #endif
     }
     
     func checkDailyLimit() {
         let lastDate = userDefaults.object(forKey: lastScanDateKey) as? Date ?? Date.distantPast
         
-        if !Calendar.current.isDateInToday(lastDate) {
+        // ユーザーのローカルタイムゾーンで日付を比較
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // 今日の開始時刻（ローカルタイムゾーン）
+        let startOfToday = calendar.startOfDay(for: now)
+        
+        // 最後にスキャンした日付の開始時刻（ローカルタイムゾーン）
+        let startOfLastDate = calendar.startOfDay(for: lastDate)
+        
+        // 日付が変わったかチェック
+        if !calendar.isDate(startOfLastDate, inSameDayAs: startOfToday) {
             scanCountToday = 0
             userDefaults.set(0, forKey: scanCountKey)
-            userDefaults.set(Date(), forKey: lastScanDateKey)
+            userDefaults.set(now, forKey: lastScanDateKey)
         } else {
             scanCountToday = userDefaults.integer(forKey: scanCountKey)
         }
@@ -184,8 +231,13 @@ class StoreKitService: NSObject, ObservableObject {
     }
     
     var canScan: Bool {
+        #if DEBUG
+        // デバッグモードでは常にスキャン可能（テスト用）
+        return true
+        #else
         if currentPlan.dailyLimit == -1 { return true }
         return scanCountToday < currentPlan.dailyLimit
+        #endif
     }
     
     var remainingFreeScans: Int {
@@ -204,7 +256,7 @@ class StoreKitService: NSObject, ObservableObject {
         
         guard let product = availableProducts.first(where: { $0.id == "standard_monthly" }) else {
             #if DEBUG
-            errorMessage = "プランが見つかりませんでした。\n\n【開発者向け】\nApp Store Connectで製品ID「standard_monthly」を設定してください。\n\n現在の製品数: \(availableProducts.count)"
+            errorMessage = String(format: L10n.planNotFound.text, availableProducts.count)
             #else
             errorMessage = L10n.purchaseErrorPlanNotFound.text
             #endif
@@ -238,7 +290,7 @@ class StoreKitService: NSObject, ObservableObject {
                 case .pending:
                     await MainActor.run {
                         self.isLoading = false
-                        self.errorMessage = "購入が保留中です。承認をお待ちください。"
+                        self.errorMessage = L10n.purchasePending.text
                         completion(false)
                     }
                     

@@ -4,6 +4,7 @@ import SwiftUI
 import Vision
 import VisionKit
 import AVFoundation
+import GoogleMobileAds
 
 class ScannerViewModel: ObservableObject {
     @Published var scannedText = ""
@@ -15,6 +16,7 @@ class ScannerViewModel: ObservableObject {
     // 進捗表示用
     @Published var currentScanPage: Int = 0
     @Published var totalScanPages: Int = 0
+    @Published var analysisProgressMessage: String = ""
     
     // UI State Flags
     @Published var showingCamera = false
@@ -37,10 +39,72 @@ class ScannerViewModel: ObservableObject {
     private let storeKitService = StoreKitService.shared
     private let webPageHelper = WebPageHelper.shared
     
+    // 進捗表示用のタイマー
+    private var progressTimer: Timer?
+    
+    /// 解析をキャンセル
+    func cancelAnalysis() {
+        openAIService.cancelCurrentRequest()
+        webPageHelper.cancelCurrentRequest()
+        isAnalyzing = false
+        isScanning = false
+        stopProgressTimer()
+    }
+    
+    /// 進捗タイマーを開始
+    private func startProgressTimer() {
+        stopProgressTimer()
+        analysisProgressMessage = L10n.analyzing.text
+        
+        var elapsedSeconds = 0
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self = self, self.isAnalyzing else {
+                timer.invalidate()
+                return
+            }
+            
+            elapsedSeconds += 1
+            
+            // 時間経過に応じてメッセージを更新
+            let currentLanguage = LanguageManager.shared.currentLanguage
+            switch elapsedSeconds {
+            case 0..<5:
+                self.analysisProgressMessage = currentLanguage == .japanese 
+                    ? "文書を読み込んでいます..."
+                    : "Reading document..."
+            case 5..<15:
+                self.analysisProgressMessage = currentLanguage == .japanese 
+                    ? "重要なポイントを検出中..."
+                    : "Detecting important points..."
+            case 15..<30:
+                self.analysisProgressMessage = currentLanguage == .japanese 
+                    ? "詳細を確認中..."
+                    : "Checking details..."
+            case 30..<60:
+                self.analysisProgressMessage = currentLanguage == .japanese 
+                    ? "項目を整理中..."
+                    : "Organizing items..."
+            default:
+                self.analysisProgressMessage = currentLanguage == .japanese 
+                    ? "最終チェック中..."
+                    : "Final check..."
+            }
+        }
+    }
+    
+    /// 進捗タイマーを停止
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+        analysisProgressMessage = ""
+    }
+    
     func checkCameraPermission() {
         guard Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription") != nil else {
+            #if DEBUG
             print("ERROR: NSCameraUsageDescription not found in Info.plist")
-            self.errorMessage = "カメラの使用許可設定が不足しています。開発者にお問い合わせください。"
+            #endif
+            self.errorMessage = L10n.cameraPermissionMissing.text
             return
         }
         
@@ -98,7 +162,7 @@ class ScannerViewModel: ObservableObject {
             guard !images.isEmpty else {
                 DispatchQueue.main.async {
                     self?.isScanning = false
-                    self?.errorMessage = "PDFを読み込めませんでした"
+                    self?.errorMessage = L10n.pdfLoadError.text
                 }
                 return
             }
@@ -117,7 +181,7 @@ class ScannerViewModel: ObservableObject {
         }
         
         guard let url = normalizedURL(from: normalizedURLString) else {
-            errorMessage = "http:// または https:// で始まる正しいURLを入力してください。"
+            errorMessage = L10n.invalidURL.text
             return
         }
         
@@ -140,7 +204,7 @@ class ScannerViewModel: ObservableObject {
                 let fullText = accumulatedText.joined(separator: "\n\n--- Page Break ---\n\n")
                 
                 if fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    self.errorMessage = "文字を読み取れませんでした"
+                    self.errorMessage = L10n.textRecognitionError.text
                 } else {
                     self.scannedText = fullText
                 }
@@ -174,7 +238,38 @@ class ScannerViewModel: ObservableObject {
             return
         }
         
-        performAnalysis()
+        // フリープランの場合のみ、動画広告を表示してから解析を開始
+        // スタンダードプランとプロプランは広告非表示で直接解析を開始
+        if storeKitService.currentPlan == .free {
+            showAdBeforeAnalysis()
+        } else {
+            // スタンダードプラン・プロプランは広告なしで直接解析を開始
+            performAnalysis()
+        }
+    }
+    
+    /// 動画広告を表示してから解析を開始（フリープランのみ）
+    private func showAdBeforeAnalysis() {
+        Task { @MainActor in
+            let adMobService = AdMobService.shared
+            
+            // リワード広告を読み込んで表示、最後まで見たら解析を開始
+            adMobService.loadRewardedAd { [weak self] watched in
+                guard let self = self else { return }
+                
+                if watched {
+                    // 広告を最後まで見た場合のみ、解析を開始
+                    self.performAnalysis()
+                } else {
+                    // 広告を見なかった、または読み込みに失敗した場合は、エラーメッセージを表示
+                    let currentLanguage = LanguageManager.shared.currentLanguage
+                    self.errorMessage = currentLanguage == .japanese
+                        ? "動画広告を最後まで視聴すると、AI解析を利用できます。"
+                        : "Please watch the video ad to the end to use AI analysis."
+                    self.isAnalyzing = false
+                }
+            }
+        }
     }
     
     func analyzeWithTruncation() {
@@ -184,29 +279,62 @@ class ScannerViewModel: ObservableObject {
     }
     
     private func performAnalysis(textOverride: String? = nil) {
+        #if !DEBUG
+        // 本番環境でのみプランチェック
         if !storeKitService.canScan {
             showingPaywall = true
             return
         }
+        #endif
         
         isAnalyzing = true
         errorMessage = nil
         
+        // 進捗タイマーを開始
+        startProgressTimer()
+        
         let textToAnalyze = textOverride ?? scannedText
         
-        // AIモデルの決定ロジック（全プランでgpt-4o-miniを使用）
-        let model = storeKitService.currentPlan.aiModel
+        // AIモデルの決定ロジック
+        // プロプランの制限に達した場合は、スタンダードプランのAIモデルに自動切り替え
+        let model: String
+        if storeKitService.currentPlan == .pro {
+            // プロプランの場合、制限に達しているかチェック
+            if storeKitService.currentPlan.dailyLimit != -1 && 
+               storeKitService.scanCountToday >= storeKitService.currentPlan.dailyLimit {
+                // プロプランの制限に達した場合、スタンダードプランのAIモデル（gpt-4o-mini）を使用
+                model = UserPlan.standard.aiModel
+            } else {
+                // プロプランの制限内の場合、プロプランのAIモデル（gpt-4o）を使用
+                model = storeKitService.currentPlan.aiModel
+            }
+        } else {
+            // フリープラン・スタンダードプランの場合、通常のAIモデルを使用
+            model = storeKitService.currentPlan.aiModel
+        }
         
         openAIService.analyzeContract(text: textToAnalyze, model: model) { [weak self] (result: Result<AnalysisResult, Error>) in
             DispatchQueue.main.async {
-                self?.isAnalyzing = false
+                guard let self = self else { return }
+                
+                // 進捗タイマーを停止
+                self.stopProgressTimer()
+                
+                // 解析完了を確実に処理
+                self.isAnalyzing = false
+                
                 switch result {
                 case .success(let analysis):
-                    self?.analysisResult = analysis
-                    self?.showingAnalysisResult = true
-                    self?.storeKitService.incrementScanCount()
+                    // 解析結果を設定してからシートを表示
+                    self.analysisResult = analysis
+                    // 少し遅延を入れてシートが確実に表示されるようにする
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.showingAnalysisResult = true
+                    }
+                    self.storeKitService.incrementScanCount()
                 case .failure(let error):
-                    self?.errorMessage = "解析エラー: \(error.localizedDescription)"
+                    let errorMsg = String(format: L10n.analysisErrorWithDescription.text, error.localizedDescription)
+                    self.errorMessage = errorMsg
                 }
             }
         }
@@ -218,7 +346,7 @@ class ScannerViewModel: ObservableObject {
             guard let url = urls.first else { return }
             scanPDF(url: url)
         case .failure(let error):
-            errorMessage = "ファイル読み込みエラー: \(error.localizedDescription)"
+            errorMessage = String(format: L10n.fileLoadError.text, error.localizedDescription)
         }
     }
     
@@ -256,7 +384,7 @@ class ScannerViewModel: ObservableObject {
         switch result {
         case .success(let text):
             if text.isEmpty {
-                errorMessage = "ページからテキストを読み取れませんでした。ページが空か、アクセスできない可能性があります。"
+                errorMessage = L10n.webPageLoadError.text
             } else {
                 scannedText = text
             }

@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 struct PaywallView: View {
     @Environment(\.presentationMode) var presentationMode
@@ -140,24 +141,30 @@ struct PaywallView: View {
     private var planCardConfigs: [PlanCardConfiguration] {
         let freeFeatures = [
             PlanFeature(text: L10n.standardAI.text),
-            PlanFeature(text: L10n.limit3perDay.text),
+            PlanFeature(text: L10n.unlimitedWithAds.text),
             PlanFeature(text: L10n.charLimit10k.text)
         ]
         
         let standardFeatures = [
             PlanFeature(text: L10n.standardAI.text),
+            PlanFeature(text: L10n.noAds.text),
             PlanFeature(text: L10n.unlimitedScans.text),
             PlanFeature(text: L10n.charLimit100k.text)
         ]
         
         let proFeatures = [
             PlanFeature(text: L10n.highPerformanceAI.text),
-            PlanFeature(text: L10n.limit20perDay.text),
+            PlanFeature(text: L10n.noAds.text),
+            PlanFeature(text: L10n.limit10perDay.text),
             PlanFeature(text: L10n.charLimit100k.text)
         ]
         
         let isStandard = storeKitService.currentPlan == .standard
         let isFree = storeKitService.currentPlan == .free
+        
+        // StoreKitから実際の価格を取得（地域に応じて自動的に適切な価格が表示される）
+        let standardPrice = getPriceForPlan(.standard) ?? L10n.standardPrice.text
+        let proPrice = getPriceForPlan(.pro) ?? L10n.proPrice.text
         
         return [
             PlanCardConfiguration(
@@ -178,7 +185,7 @@ struct PaywallView: View {
             PlanCardConfiguration(
                 tier: .standard,
                 title: L10n.standardPlan.text,
-                price: L10n.standardPrice.text,
+                price: standardPrice,
                 features: standardFeatures,
                 accentColor: Color(hex: "E07A5F"),
                 icon: "star.fill",
@@ -196,7 +203,7 @@ struct PaywallView: View {
             PlanCardConfiguration(
                 tier: .pro,
                 title: L10n.proPlan.text,
-                price: L10n.proPrice.text,
+                price: proPrice,
                 features: proFeatures,
                 accentColor: Color.gray,
                 icon: "lock.fill",
@@ -212,6 +219,15 @@ struct PaywallView: View {
                 action: nil
             )
         ]
+    }
+    
+    /// プランに対応するStoreKitの価格を取得
+    private func getPriceForPlan(_ plan: UserPlan) -> String? {
+        guard let productID = PlanConfiguration.productID(for: plan),
+              let product = storeKitService.availableProducts.first(where: { $0.id == productID }) else {
+            return nil
+        }
+        return product.displayPrice
     }
     
     func startPurchase(plan: UserPlan) {
