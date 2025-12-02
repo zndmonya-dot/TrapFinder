@@ -48,8 +48,8 @@ struct DocumentCameraView: UIViewControllerRepresentable {
 
 struct ScannerView: View {
     @StateObject private var viewModel = ScannerViewModel()
-    @StateObject private var revenueCatService = RevenueCatService.shared
-    @ObservedObject private var languageManager = LanguageManager.shared
+    @EnvironmentObject var storeKitService: StoreKitService
+    @EnvironmentObject var languageManager: LanguageManager
     
     @State private var showingSettings = false
     
@@ -57,7 +57,6 @@ struct ScannerView: View {
         NavigationView {
             ScannerContentView(
                 viewModel: viewModel,
-                revenueCatService: revenueCatService, // 引数追加
                 showingSettings: $showingSettings
             )
             .navigationBarHidden(true)
@@ -80,7 +79,7 @@ struct ScannerView: View {
                 CameraView(image: $viewModel.selectedImage)
             }
             .sheet(isPresented: $viewModel.showingTextInput) {
-                TextInputView(text: $viewModel.scannedText)
+                TextInputView(text: $viewModel.scannedText, characterLimit: storeKitService.currentPlan.characterLimit)
             }
             .sheet(isPresented: $viewModel.showingURLInput) {
                 URLInputView(viewModel: viewModel)
@@ -117,9 +116,17 @@ struct ScannerView: View {
                 )
             }
             .alert(isPresented: $viewModel.showingTokenLimitAlert) {
-                Alert(
+                let characterLimit = storeKitService.currentPlan.characterLimit
+                let formattedLimit = characterLimit >= 10000 
+                    ? String(format: "%.0f万", Double(characterLimit) / 10000.0)
+                    : String(format: "%d", characterLimit)
+                let messageText = languageManager.currentLanguage == .japanese
+                    ? "読み取った文字数が\(formattedLimit)文字を超えています。\nすべて解析すると時間がかかり、エラーになる可能性があります。\n\n先頭の\(formattedLimit)文字だけ解析しますか？"
+                    : "The scanned text exceeds \(characterLimit) characters.\nAnalyzing all of it may take time and could cause errors.\n\nWould you like to analyze only the first \(characterLimit) characters?"
+                
+                return Alert(
                     title: Text(L10n.tokenLimitTitle.text),
-                    message: Text(L10n.tokenLimitMessage.text),
+                    message: Text(messageText),
                     primaryButton: .default(Text(L10n.analyzeTruncated.text)) {
                         viewModel.analyzeWithTruncation()
                     },
@@ -128,7 +135,7 @@ struct ScannerView: View {
             }
         }
         .accentColor(Color(hex: "E07A5F"))
-        .id(languageManager.currentLanguage.id) // 言語切り替え対応
+        // 言語変更時は@ObservedObjectが自動的にUIを更新するため、.id()は不要
     }
 }
 
@@ -136,7 +143,8 @@ struct ScannerView: View {
 
 struct ScannerContentView: View {
     @ObservedObject var viewModel: ScannerViewModel
-    @ObservedObject var revenueCatService = RevenueCatService.shared // プロパティ追加
+    @EnvironmentObject var storeKitService: StoreKitService
+    @EnvironmentObject var languageManager: LanguageManager
     @Binding var showingSettings: Bool
     
     let bgGradient = LinearGradient(
@@ -373,6 +381,7 @@ private struct ScannerAction: Identifiable {
 
 // 使い方ガイドカード
 struct HowToUseCard: View {
+    @EnvironmentObject var languageManager: LanguageManager
     @State private var isExpanded = false
     
     var body: some View {
@@ -568,7 +577,18 @@ struct URLInputView: View {
 
 struct TextInputView: View {
     @Binding var text: String
+    let characterLimit: Int
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var languageManager: LanguageManager
+    
+    private var limitText: String {
+        let formattedLimit = characterLimit >= 10000 
+            ? String(format: "%.0f万", Double(characterLimit) / 10000.0)
+            : String(format: "%d", characterLimit)
+        return languageManager.currentLanguage == .japanese
+            ? "※\(formattedLimit)文字まで入力可能です"
+            : "※Up to \(characterLimit) characters can be entered"
+    }
     
     var body: some View {
         NavigationView {
@@ -587,7 +607,7 @@ struct TextInputView: View {
                     .shadow(color: Color.black.opacity(0.05), radius: 5)
                     .padding(.horizontal)
                 
-                Text(L10n.textInputLimit.text)
+                Text(limitText)
                     .font(.system(.caption, design: .rounded))
                     .foregroundColor(.secondary)
                     .padding(.horizontal)

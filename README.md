@@ -56,8 +56,50 @@ OpenAI (GPT-4o-mini) を使用し、文書の種類を自動判定して以下�
 *   **UIフレームワーク**: SwiftUI
 *   **AI**: OpenAI API (GPT-4o-mini)
 *   **OCR**: Vision Framework, PDFKit
-*   **課金**: RevenueCat (Freemiumモデル)
+*   **課金**: StoreKit 2 (Apple公式API)
 *   **多言語対応**: 日本語・英語（UIとAI出力の両方）
+
+## セットアップ手順
+
+### 1. APIキーの設定
+1. `App/App/Config/AppConfig.example.swift` を `AppConfig.swift` にコピー
+2. `AppConfig.swift` に実際のAPIキーを設定：
+   - `revenueCatAPIKey`: RevenueCatダッシュボードから取得（`appl_` で始まる公開キー）
+   - `openAIAPIKey`: OpenAI APIキー（`sk-` で始まる）
+
+### 2. App Store Connectでの設定（必須）
+StoreKit 2を使用するため、App Store Connectでサブスクリプション製品を設定する必要があります。
+
+**詳細な手順は `SETUP_GUIDE.md` を参照してください。**
+
+#### 簡単な手順：
+1. [App Store Connect](https://appstoreconnect.apple.com/) にログイン
+2. アプリを選択（または新規作成）
+3. **「機能」** → **「App内課金」** → **「サブスクリプション」** を選択
+4. サブスクリプショングループを作成（初回の場合）
+5. サブスクリプション製品を作成：
+   - **製品ID**: `standard_monthly` ⚠️ **重要**: `PlanConfiguration.swift` と完全に一致させる
+   - **期間**: 1ヶ月
+   - **価格**: ¥480
+6. サンドボックステスターアカウントを作成（テスト用）
+
+**注意**: 
+- 製品IDは `PlanConfiguration.swift` の `standardPlanID` と完全に一致させる必要があります
+- テスト環境では、サンドボックステストアカウントで購入をテストできます
+- 詳細は `SETUP_GUIDE.md` を参照してください
+
+### 3. （参考）以前のRevenueCat設定（現在は使用していません）
+
+本アプリは現在 **StoreKit 2** を直接使用しています。RevenueCatは使用していません。
+
+### 4. プランIDの確認
+`App/App/Config/PlanConfiguration.swift` の `standardPlanID` が、App Store Connectで設定した製品IDと一致していることを確認してください。
+
+### 5. ビルドとテスト
+1. 実機またはシミュレーターでビルド
+2. サンドボックステストアカウントで購入フローをテスト
+   - 設定 → App Store → サンドボックスアカウントでログイン
+3. 購入復元機能もテスト
 
 ## UI/UX
 *   **モダンなカードUI**: 暖色系のカラーパレットを採用

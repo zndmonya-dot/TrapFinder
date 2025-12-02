@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LegalDisclaimerView: View {
     @Binding var hasAgreed: Bool
-    @ObservedObject private var languageManager = LanguageManager.shared
+    @EnvironmentObject var languageManager: LanguageManager
     
     var body: some View {
         ZStack {

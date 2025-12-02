@@ -34,7 +34,7 @@ class ScannerViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let ocrService = OCRService.shared
     private let openAIService = OpenAIService.shared
-    private let revenueCatService = RevenueCatService.shared
+    private let storeKitService = StoreKitService.shared
     private let webPageHelper = WebPageHelper.shared
     
     func checkCameraPermission() {
@@ -168,7 +168,7 @@ class ScannerViewModel: ObservableObject {
         guard !scannedText.isEmpty else { return }
         
         // プランごとの文字数制限をチェック
-        let limit = revenueCatService.currentPlan.characterLimit
+        let limit = storeKitService.currentPlan.characterLimit
         if scannedText.count > limit {
             showingTokenLimitAlert = true
             return
@@ -178,13 +178,13 @@ class ScannerViewModel: ObservableObject {
     }
     
     func analyzeWithTruncation() {
-        let limit = revenueCatService.currentPlan.characterLimit
+        let limit = storeKitService.currentPlan.characterLimit
         let truncatedText = String(scannedText.prefix(limit))
         performAnalysis(textOverride: truncatedText)
     }
     
     private func performAnalysis(textOverride: String? = nil) {
-        if !revenueCatService.canScan {
+        if !storeKitService.canScan {
             showingPaywall = true
             return
         }
@@ -195,7 +195,7 @@ class ScannerViewModel: ObservableObject {
         let textToAnalyze = textOverride ?? scannedText
         
         // AIモデルの決定ロジック（全プランでgpt-4o-miniを使用）
-        let model = revenueCatService.currentPlan.aiModel
+        let model = storeKitService.currentPlan.aiModel
         
         openAIService.analyzeContract(text: textToAnalyze, model: model) { [weak self] (result: Result<AnalysisResult, Error>) in
             DispatchQueue.main.async {
@@ -204,7 +204,7 @@ class ScannerViewModel: ObservableObject {
                 case .success(let analysis):
                     self?.analysisResult = analysis
                     self?.showingAnalysisResult = true
-                    self?.revenueCatService.incrementScanCount()
+                    self?.storeKitService.incrementScanCount()
                 case .failure(let error):
                     self?.errorMessage = "解析エラー: \(error.localizedDescription)"
                 }

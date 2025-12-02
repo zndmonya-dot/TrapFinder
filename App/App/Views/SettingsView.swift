@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject private var revenueCatService = RevenueCatService.shared
-    @ObservedObject private var languageManager = LanguageManager.shared
+    @EnvironmentObject var storeKitService: StoreKitService
+    @EnvironmentObject var languageManager: LanguageManager
     @State private var showingPaywall = false
     @Environment(\.presentationMode) var presentationMode
     
@@ -28,7 +28,7 @@ struct SettingsView: View {
                                 SettingsRow(
                                     icon: "creditcard.fill",
                                     title: L10n.planManagement.text,
-                                    value: revenueCatService.currentPlan == .standard ? L10n.standardPlan.text : L10n.freePlan.text,
+                                    value: storeKitService.currentPlan == .standard ? L10n.standardPlan.text : L10n.freePlan.text,
                                     iconColor: Color(hex: "2A9D8F"), // エメラルドグリーン
                                     showDivider: false
                                 )
@@ -128,8 +128,10 @@ struct SettingsView: View {
                 PaywallView()
             }
         }
-        // 言語変更時に強制再描画するためのID
-        .id(languageManager.currentLanguage.id)
+        // 言語変更時にテキストを更新するため、NavigationViewの外でIDを設定
+        .onChange(of: languageManager.currentLanguage) { _, _ in
+            // 言語変更時は自動的にUIが更新されるため、特別な処理は不要
+        }
     }
 }
 
@@ -215,7 +217,7 @@ struct SettingsRow: View {
 }
 
 struct LanguageSettingsView: View {
-    @ObservedObject private var languageManager = LanguageManager.shared
+    @EnvironmentObject var languageManager: LanguageManager
     @Environment(\.presentationMode) var presentationMode
     
     // 言語設定画面も背景統一
@@ -229,31 +231,32 @@ struct LanguageSettingsView: View {
         ZStack {
             bgGradient.ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 16) {
-                    ForEach(Language.allCases) { language in
-                        Button {
-                            languageManager.currentLanguage = language
-                        } label: {
-                            HStack {
-                                Text(language.displayName)
-                                    .font(.system(.body, design: .rounded))
-                                    .foregroundColor(Color(hex: "3D405B"))
-                                Spacer()
-                                if languageManager.currentLanguage == language {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(Color(hex: "E07A5F"))
-                                }
+            List {
+                ForEach(Language.allCases) { language in
+                    Button {
+                        languageManager.currentLanguage = language
+                        // 言語変更を反映するために少し遅延を入れてから閉じる
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒待機
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    } label: {
+                        HStack {
+                            Text(language.displayName)
+                                .font(.system(.body, design: .rounded))
+                                .foregroundColor(Color(hex: "3D405B"))
+                            
+                            Spacer()
+                            
+                            if languageManager.currentLanguage == language {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(Color(hex: "E07A5F"))
                             }
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(16)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                         }
                     }
                 }
-                .padding()
             }
+            .scrollContentBackground(.hidden)
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

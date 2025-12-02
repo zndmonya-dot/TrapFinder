@@ -1,13 +1,43 @@
 import Foundation
 
-@preconcurrency private struct OpenAIResponse: Decodable {
-    @preconcurrency struct Choice: Decodable {
-        @preconcurrency struct Message: Decodable {
+@preconcurrency
+private struct OpenAIResponse: Decodable, Sendable {
+    @preconcurrency
+    struct Choice: Decodable, Sendable {
+        @preconcurrency
+        struct Message: Decodable, Sendable {
             let content: String
+            
+            nonisolated init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: MessageCodingKeys.self)
+                content = try container.decode(String.self, forKey: .content)
+            }
+            
+            enum MessageCodingKeys: String, CodingKey {
+                case content
+            }
         }
         let message: Message
+        
+        nonisolated init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            message = try container.decode(Message.self, forKey: .message)
+        }
+        
+        enum CodingKeys: String, CodingKey {
+            case message
+        }
     }
     let choices: [Choice]
+    
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        choices = try container.decode([Choice].self, forKey: .choices)
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case choices
+    }
 }
 
 class OpenAIService {
@@ -15,14 +45,17 @@ class OpenAIService {
     private let apiKey = AppConfig.openAIAPIKey
     private let endpoint = "https://api.openai.com/v1/chat/completions"
     
+    // nonisolatedなJSONDecoderインスタンス（MainActorの制約を回避）
+    nonisolated private static let jsonDecoder = JSONDecoder()
+    
     private init() {}
     
     nonisolated private static func decodeResponse(from data: Data) throws -> OpenAIResponse {
-        try JSONDecoder().decode(OpenAIResponse.self, from: data)
+        try jsonDecoder.decode(OpenAIResponse.self, from: data)
     }
     
     nonisolated private static func decodeAnalysisResult(from contentData: Data) throws -> AnalysisResult {
-        try JSONDecoder().decode(AnalysisResult.self, from: contentData)
+        try jsonDecoder.decode(AnalysisResult.self, from: contentData)
     }
     
     enum OpenAIError: Error {
@@ -32,8 +65,8 @@ class OpenAIService {
         case apiError(String)
     }
     
-    // model引数を追加（デフォルトはgpt-4o）
-    func analyzeContract(text: String, model: String = "gpt-4o", completion: @escaping (Result<AnalysisResult, Error>) -> Void) {
+    // model引数を追加（デフォルトはgpt-4o-mini）
+    func analyzeContract(text: String, model: String = "gpt-4o-mini", completion: @escaping (Result<AnalysisResult, Error>) -> Void) {
         guard let url = URL(string: endpoint) else {
             completion(.failure(OpenAIError.invalidURL))
             return
@@ -170,7 +203,7 @@ class OpenAIService {
         - アドバイス: 「こう書き換えるとスムーズです」「この表現は誤解を招くかもしれません」
         
         【出力ルール】
-        - 網羅性: **「見落とし」がないよう、些細な点でもリストアップしてください。** 長文の規約であれば、少なくとも15件以上のリスクや注意点が潜んでいるはずです。安易にまとめず、可能な限り多く抽出してください。
+        - 網羅性: **「見落とし」がないよう、些細な点でもリストアップしてください。** リスクや注意点の件数に上限はありません。検出したすべての項目を、一切省略せずにリストアップしてください。安易にまとめず、可能な限り多く抽出してください。
         - 文体: ユーザーの頼れるパートナーとして、専門用語を使わず、**背景や理由まで含めて親切・丁寧に**解説してください。
         - 分量: **無理に短くまとめる必要はありません。** ユーザーが十分に理解できるよう、必要な情報をすべて盛り込んでください。
         \(outputLanguageInstruction)

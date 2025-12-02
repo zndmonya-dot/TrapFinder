@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("hasAgreedToTerms") private var hasAgreedToTerms = false
-    @ObservedObject private var languageManager = LanguageManager.shared
+    @EnvironmentObject var languageManager: LanguageManager
     
     // スプラッシュ画面の表示状態
     @State private var showSplash = true
@@ -23,7 +23,6 @@ struct ContentView: View {
                         LegalDisclaimerView(hasAgreed: $hasAgreedToTerms)
                     }
                 }
-                .id(languageManager.currentLanguage.id)
                 .transition(.opacity) // フェードインで現れる
             }
         }

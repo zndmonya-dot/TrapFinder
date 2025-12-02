@@ -3,7 +3,7 @@ import SwiftUI
 struct AnalysisResultView: View {
     let result: AnalysisResult
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject private var languageManager = LanguageManager.shared
+    @EnvironmentObject var languageManager: LanguageManager
     
     @State private var isShowingShareSheet = false
     

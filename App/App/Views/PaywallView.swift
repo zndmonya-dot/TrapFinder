@@ -2,10 +2,10 @@ import SwiftUI
 
 struct PaywallView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject private var revenueCatService = RevenueCatService.shared
-    @ObservedObject private var languageManager = LanguageManager.shared
-    @State private var isPurchasing = false
+    @EnvironmentObject var storeKitService: StoreKitService
+    @EnvironmentObject var languageManager: LanguageManager
     @State private var showSuccessAlert = false
+    @State private var showErrorAlert = false
     
     // トップ画面と同じ背景グラデーション
     let bgGradient = LinearGradient(
@@ -64,8 +64,10 @@ struct PaywallView: View {
                                     .frame(width: 1, height: 12)
                                 
                                 Button(action: {
-                                    revenueCatService.restorePurchases { success in
-                                        if success { presentationMode.wrappedValue.dismiss() }
+                                    Task { @MainActor in
+                                        storeKitService.restorePurchases { success in
+                                            if success { presentationMode.wrappedValue.dismiss() }
+                                        }
                                     }
                                 }) {
                                     Text(L10n.restorePurchase.text)
@@ -102,7 +104,7 @@ struct PaywallView: View {
                 }
             }
             .overlay {
-                if isPurchasing {
+                if storeKitService.isLoading {
                     ZStack {
                         Color.black.opacity(0.3)
                             .ignoresSafeArea()
@@ -121,8 +123,18 @@ struct PaywallView: View {
                     }
                 )
             }
+            .alert(L10n.purchaseErrorTitle.text, isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(storeKitService.errorMessage ?? L10n.purchaseErrorGeneric.text)
+            }
+            .onChange(of: storeKitService.errorMessage) { oldValue, newValue in
+                if newValue != nil {
+                    showErrorAlert = true
+                }
+            }
         }
-        .id(languageManager.currentLanguage.id)
+        // 言語変更時は@ObservedObjectが自動的にUIを更新するため、.id()は不要
     }
     
     private var planCardConfigs: [PlanCardConfiguration] {
@@ -144,8 +156,8 @@ struct PaywallView: View {
             PlanFeature(text: L10n.charLimit100k.text)
         ]
         
-        let isStandard = revenueCatService.currentPlan == .standard
-        let isFree = revenueCatService.currentPlan == .free
+        let isStandard = storeKitService.currentPlan == .standard
+        let isFree = storeKitService.currentPlan == .free
         
         return [
             PlanCardConfiguration(
@@ -203,14 +215,13 @@ struct PaywallView: View {
     }
     
     func startPurchase(plan: UserPlan) {
-        guard revenueCatService.currentPlan != plan else { return }
+        guard storeKitService.currentPlan != plan else { return }
         
-        isPurchasing = true
-        revenueCatService.purchase(plan: plan) { success in
-            isPurchasing = false
+        storeKitService.purchase(plan: plan) { success in
             if success {
                 showSuccessAlert = true
             }
+            // エラーはonChangeで自動的に表示される
         }
     }
     

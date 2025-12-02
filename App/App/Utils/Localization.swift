@@ -13,7 +13,11 @@ class LanguageManager: ObservableObject {
     
     var currentLanguage: Language {
         get { Language(rawValue: languageCode) ?? .japanese }
-        set { languageCode = newValue.rawValue }
+        set { 
+            languageCode = newValue.rawValue
+            // 変更を確実に通知
+            objectWillChange.send()
+        }
     }
 }
 
@@ -146,6 +150,12 @@ enum L10n {
     static var privacy: LocalizedString { LocalizedString(ja: "プライバシーポリシー", en: "Privacy Policy") }
     static var purchaseSuccessTitle: LocalizedString { LocalizedString(ja: "完了", en: "Success") }
     static var purchaseSuccessMsg: LocalizedString { LocalizedString(ja: "アップグレードが完了しました！", en: "Upgrade successful!") }
+    static var purchaseErrorTitle: LocalizedString { LocalizedString(ja: "エラー", en: "Error") }
+    static var purchaseErrorGeneric: LocalizedString { LocalizedString(ja: "購入処理中にエラーが発生しました", en: "An error occurred during purchase") }
+    static var purchaseErrorPlanNotFound: LocalizedString { LocalizedString(ja: "プランが見つかりませんでした", en: "Plan not found") }
+    static var purchaseCancelled: LocalizedString { LocalizedString(ja: "購入がキャンセルされました", en: "Purchase was cancelled") }
+    static var restoreSuccess: LocalizedString { LocalizedString(ja: "購入を復元しました", en: "Purchases restored") }
+    static var restoreNoPurchases: LocalizedString { LocalizedString(ja: "復元できる購入が見つかりませんでした", en: "No purchases found to restore") }
     
     // Legal Disclaimer
     static var legalTitle: LocalizedString { LocalizedString(ja: "利用上の重要なお知らせ", en: "Important Legal Notice") }
@@ -202,4 +212,7 @@ enum L10n {
     static var howToUseStep2Desc: LocalizedString { LocalizedString(ja: "文書の種類を自動判定し、注意点をチェック", en: "Automatically detects document type and checks for issues") }
     static var howToUseStep3: LocalizedString { LocalizedString(ja: "3. 結果を確認", en: "3. Review Results") }
     static var howToUseStep3Desc: LocalizedString { LocalizedString(ja: "分かりやすい解説とアドバイスを表示", en: "View easy-to-understand explanations and advice") }
+    
+    // Language Settings
+    static var languageSelectionHint: LocalizedString { LocalizedString(ja: "アプリの表示言語を選択してください", en: "Select your preferred language") }
 }
