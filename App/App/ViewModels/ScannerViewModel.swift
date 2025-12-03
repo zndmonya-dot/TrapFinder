@@ -4,7 +4,6 @@ import SwiftUI
 import Vision
 import VisionKit
 import AVFoundation
-import GoogleMobileAds
 
 class ScannerViewModel: ObservableObject {
     @Published var scannedText = ""
@@ -238,38 +237,8 @@ class ScannerViewModel: ObservableObject {
             return
         }
         
-        // フリープランの場合のみ、動画広告を表示してから解析を開始
-        // スタンダードプランとプロプランは広告非表示で直接解析を開始
-        if storeKitService.currentPlan == .free {
-            showAdBeforeAnalysis()
-        } else {
-            // スタンダードプラン・プロプランは広告なしで直接解析を開始
-            performAnalysis()
-        }
-    }
-    
-    /// 動画広告を表示してから解析を開始（フリープランのみ）
-    private func showAdBeforeAnalysis() {
-        Task { @MainActor in
-            let adMobService = AdMobService.shared
-            
-            // リワード広告を読み込んで表示、最後まで見たら解析を開始
-            adMobService.loadRewardedAd { [weak self] watched in
-                guard let self = self else { return }
-                
-                if watched {
-                    // 広告を最後まで見た場合のみ、解析を開始
-                    self.performAnalysis()
-                } else {
-                    // 広告を見なかった、または読み込みに失敗した場合は、エラーメッセージを表示
-                    let currentLanguage = LanguageManager.shared.currentLanguage
-                    self.errorMessage = currentLanguage == .japanese
-                        ? "動画広告を最後まで視聴すると、AI解析を利用できます。"
-                        : "Please watch the video ad to the end to use AI analysis."
-                    self.isAnalyzing = false
-                }
-            }
-        }
+        // 直接解析を開始
+        performAnalysis()
     }
     
     func analyzeWithTruncation() {

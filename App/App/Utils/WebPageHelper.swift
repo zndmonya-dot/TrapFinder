@@ -4,7 +4,14 @@ import UIKit
 class WebPageHelper {
     static let shared = WebPageHelper()
     
+    private var currentTask: URLSessionDataTask?
+    
     private init() {}
+    
+    func cancelCurrentRequest() {
+        currentTask?.cancel()
+        currentTask = nil
+    }
     
     enum WebError: LocalizedError {
         case invalidURL
@@ -27,11 +34,15 @@ class WebPageHelper {
     }
     
     func fetchText(from url: URL, completion: @escaping (Result<String, Error>) -> Void) {
+        // 既存のリクエストをキャンセル
+        currentTask?.cancel()
+        
         var request = URLRequest(url: url)
         request.timeoutInterval = 30.0
         request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        currentTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            defer { self?.currentTask = nil }
             // ネットワークエラーのチェック
             if let error = error {
                 completion(.failure(error))
@@ -74,6 +85,7 @@ class WebPageHelper {
                     completion(.failure(WebError.parsingError))
                 }
             }
-        }.resume()
+        }
+        currentTask?.resume()
     }
 }
