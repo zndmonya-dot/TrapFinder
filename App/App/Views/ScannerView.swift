@@ -65,24 +65,33 @@ struct ScannerView: View {
                     viewModel.scanImage(image)
                 }
             }
-            .sheet(isPresented: $viewModel.showingAnalysisResult) {
-                if let result = viewModel.analysisResult {
-                    AnalysisResultView(result: result)
+            .sheet(item: $viewModel.activeSheet) { sheet in
+                switch sheet {
+                case .analysisResult:
+                    // analysisResultがnilの場合はシートを表示しない
+                    if let result = viewModel.analysisResult {
+                        AnalysisResultView(result: result)
+                    } else {
+                        // analysisResultがnilの場合は何も表示しない（シートは自動的に閉じる）
+                        EmptyView()
+                    }
+                case .imagePicker:
+                    ImagePicker(onImagesPicked: { images in
+                        viewModel.handleImageSelection(images: images)
+                    })
+                case .textInput:
+                    TextInputView(text: $viewModel.scannedText, characterLimit: storeKitService.currentPlan.characterLimit)
+                case .urlInput:
+                    URLInputView(viewModel: viewModel)
+                case .paywall:
+                    PaywallView()
+                case .cameraAlert, .tokenLimitAlert:
+                    // これらは.alertで表示されるため、.sheetでは何も表示しない
+                    EmptyView()
                 }
-            }
-            .sheet(isPresented: $viewModel.showingImagePicker) {
-                ImagePicker(onImagesPicked: { images in
-                    viewModel.handleImageSelection(images: images)
-                })
             }
             .sheet(isPresented: $viewModel.showingCamera) {
                 CameraView(image: $viewModel.selectedImage)
-            }
-            .sheet(isPresented: $viewModel.showingTextInput) {
-                TextInputView(text: $viewModel.scannedText, characterLimit: storeKitService.currentPlan.characterLimit)
-            }
-            .sheet(isPresented: $viewModel.showingURLInput) {
-                URLInputView(viewModel: viewModel)
             }
             .fileImporter(
                 isPresented: $viewModel.showingFileImporter,
@@ -91,19 +100,28 @@ struct ScannerView: View {
             ) { result in
                 viewModel.handleFileImport(result: result)
             }
-            .sheet(isPresented: $viewModel.showingPaywall) {
-                PaywallView()
-            }
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
             }
             .alert(item: Binding<AlertItem?>(
-                get: { viewModel.errorMessage.map { AlertItem(message: $0) } },
-                set: { _ in viewModel.errorMessage = nil }
+                get: {
+                    if case .error(let message) = viewModel.flowState {
+                        return AlertItem(message: message)
+                    }
+                    return nil
+                },
+                set: { _ in
+                    if case .error = viewModel.flowState {
+                        viewModel.flowState = .idle
+                    }
+                }
             )) { item in
                 Alert(title: Text(L10n.error.text), message: Text(item.message), dismissButton: .default(Text("OK")))
             }
-            .alert(isPresented: $viewModel.showingCameraAlert) {
+            .alert(item: Binding<ActiveSheet?>(
+                get: { viewModel.activeSheet == .cameraAlert ? .cameraAlert : nil },
+                set: { _ in viewModel.activeSheet = nil }
+            )) { _ in
                 Alert(
                     title: Text(L10n.cameraPermissionTitle.text),
                     message: Text(L10n.cameraPermissionMsg.text),
@@ -115,7 +133,10 @@ struct ScannerView: View {
                     secondaryButton: .cancel(Text(L10n.cancel.text))
                 )
             }
-            .alert(isPresented: $viewModel.showingTokenLimitAlert) {
+            .alert(item: Binding<ActiveSheet?>(
+                get: { viewModel.activeSheet == .tokenLimitAlert ? .tokenLimitAlert : nil },
+                set: { _ in viewModel.activeSheet = nil }
+            )) { _ in
                 let characterLimit = storeKitService.currentPlan.characterLimit
                 let formattedLimit = characterLimit >= 10000 
                     ? String(format: "%.0f万", Double(characterLimit) / 10000.0)
@@ -167,7 +188,7 @@ struct ScannerContentView: View {
                 subtitle: L10n.albumSelectDesc.text,
                 icon: "photo.on.rectangle.fill",
                 tintColor: Color(hex: "F2CC8F"),
-                handler: { viewModel.showingImagePicker = true }
+                handler: { viewModel.activeSheet = .imagePicker }
             ),
             ScannerAction(
                 title: L10n.pdfImport.text,
@@ -181,14 +202,14 @@ struct ScannerContentView: View {
                 subtitle: L10n.webPageDesc.text,
                 icon: "globe",
                 tintColor: Color(hex: "3D405B"),
-                handler: { viewModel.showingURLInput = true }
+                handler: { viewModel.activeSheet = .urlInput }
             ),
             ScannerAction(
                 title: L10n.textInput.text,
                 subtitle: L10n.textInputDesc.text,
                 icon: "keyboard",
                 tintColor: Color(hex: "9D8189"),
-                handler: { viewModel.showingTextInput = true }
+                handler: { viewModel.activeSheet = .textInput }
             )
         ]
     }
@@ -306,20 +327,24 @@ struct ScannerContentView: View {
                 }
             }
             
-            if viewModel.isScanning || viewModel.isAnalyzing {
-                let message: String = {
-                    if viewModel.isScanning {
-                        if viewModel.totalScanPages > 1 {
-                            return "\(L10n.scanning.text)\n(\(viewModel.currentScanPage)/\(viewModel.totalScanPages))"
-                        } else {
-                            return L10n.scanning.text
-                        }
-                    } else {
-                        return L10n.analyzing.text
-                    }
-                }()
+            if let message = overlayMessage {
                 LoadingOverlay(message: message)
             }
+        }
+    }
+    
+    private var overlayMessage: String? {
+        switch viewModel.flowState {
+        case .scanning(let page, let total):
+            if total > 1 {
+                return "\(L10n.scanning.text)\n(\(page)/\(total))"
+            } else {
+                return L10n.scanning.text
+            }
+        case .analyzing:
+            return L10n.analyzing.text
+        default:
+            return nil
         }
     }
 }

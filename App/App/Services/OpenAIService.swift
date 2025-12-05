@@ -1,6 +1,32 @@
 import Foundation
 
 @preconcurrency
+private struct OpenAIRequest: Encodable, Sendable {
+    struct Message: Encodable, Sendable {
+        let role: String
+        let content: String
+    }
+    
+    struct ResponseFormat: Encodable, Sendable {
+        let type: String
+    }
+    
+    let model: String
+    let messages: [Message]
+    let responseFormat: ResponseFormat
+    let temperature: Double
+    let maxTokens: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case model
+        case messages
+        case responseFormat = "response_format"
+        case temperature
+        case maxTokens = "max_tokens"
+    }
+}
+
+@preconcurrency
 private struct OpenAIResponse: Decodable, Sendable {
     @preconcurrency
     struct Choice: Decodable, Sendable {
@@ -40,10 +66,40 @@ private struct OpenAIResponse: Decodable, Sendable {
     }
 }
 
-class OpenAIService {
+extension OpenAIService.OpenAIError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .missingAPIKey:
+            return "OpenAI APIキーが設定されていません。環境変数またはInfo.plistにOPENAI_API_KEYを設定してください。"
+        case .invalidURL:
+            return "無効なリクエストURLです。"
+        case .noData:
+            return "レスポンスが空でした。"
+        case .decodingError:
+            return "レスポンスの解析に失敗しました。"
+        case .apiError(let message):
+            return message
+        }
+    }
+}
+
+protocol OpenAIAnalyzing {
+    func analyzeContract(text: String, model: String) async throws -> AnalysisResult
+}
+
+class OpenAIService: OpenAIAnalyzing {
     static let shared = OpenAIService()
-    private let apiKey = AppConfig.openAIAPIKey
+    private var apiKey: String { AppConfig.openAIAPIKey }
     private let endpoint = "https://api.openai.com/v1/chat/completions"
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        // 長文解析対応: リクエスト/リソースタイムアウトを長めに確保
+        config.timeoutIntervalForRequest = 300.0
+        config.timeoutIntervalForResource = 600.0
+        // HTTP/2/3 を自動利用するため特別な設定は不要
+        config.httpMaximumConnectionsPerHost = 2
+        return URLSession(configuration: config)
+    }()
     
     // nonisolatedなJSONDecoderインスタンス（MainActorの制約を回避）
     nonisolated private static let jsonDecoder = JSONDecoder()
@@ -68,114 +124,164 @@ class OpenAIService {
     }
     
     enum OpenAIError: Error {
+        case missingAPIKey
         case invalidURL
         case noData
         case decodingError
         case apiError(String)
     }
     
-    // model引数を追加（デフォルトはgpt-4o-mini）
-    func analyzeContract(text: String, model: String = "gpt-4o-mini", completion: @escaping (Result<AnalysisResult, Error>) -> Void) {
+    /// async/await 版。UI側で Task によるキャンセルが可能。
+    func analyzeContract(text: String, model: String = "gpt-4o-mini") async throws -> AnalysisResult {
+        #if DEBUG
+        let keyPreview = apiKey.isEmpty ? "空" : String(apiKey.prefix(6))
+        print("[OpenAIService] ===== Analysis Start =====")
+        print("[OpenAIService] API key empty? \(apiKey.isEmpty) prefix: \(keyPreview)")
+        print("[OpenAIService] Text length: \(text.count) characters")
+        print("[OpenAIService] Model: \(model)")
+        #endif
+        
+        guard !apiKey.isEmpty else {
+            #if DEBUG
+            print("[OpenAIService] ERROR: API key is missing!")
+            #endif
+            throw OpenAIError.missingAPIKey
+        }
         guard let url = URL(string: endpoint) else {
-            completion(.failure(OpenAIError.invalidURL))
-            return
+            throw OpenAIError.invalidURL
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        // HTTP圧縮を有効化（リクエストサイズ削減で転送時間短縮）
         request.addValue("gzip, deflate", forHTTPHeaderField: "Accept-Encoding")
-        // 長文解析に対応するため、タイムアウトを300秒（5分）に設定
         request.timeoutInterval = 300.0
         
         let currentLanguage = LanguageManager.shared.currentLanguage
+        request.httpBody = try requestBody(text: text, model: model, language: currentLanguage)
+        
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            #if DEBUG
+            print("[OpenAIService] Network error: \(error.localizedDescription)")
+            #endif
+            throw OpenAIError.apiError("ネットワークエラー: \(error.localizedDescription)")
+        }
+        
+        if let httpResponse = response as? HTTPURLResponse {
+            #if DEBUG
+            print("[OpenAIService] HTTP status: \(httpResponse.statusCode)")
+            #endif
+            
+            if !(200...299).contains(httpResponse.statusCode) {
+                // エラーレスポンスの内容を取得
+                let errorBody = String(data: data, encoding: .utf8) ?? "不明なエラー"
+                #if DEBUG
+                print("[OpenAIService] Error response body: \(errorBody)")
+                #endif
+                let errorMessage = String(format: L10n.httpError.text, httpResponse.statusCode)
+                throw OpenAIError.apiError("\(errorMessage)\n詳細: \(errorBody)")
+            }
+        }
+        
+        #if DEBUG
+        print("[OpenAIService] Response data size: \(data.count) bytes")
+        #endif
+        
+        let aiResponse: OpenAIResponse
+        do {
+            aiResponse = try Self.decodeResponse(from: data)
+        } catch {
+            #if DEBUG
+            print("[OpenAIService] Failed to decode response: \(error)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("[OpenAIService] Response JSON: \(jsonString.prefix(500))")
+            }
+            #endif
+            throw OpenAIError.decodingError
+        }
+        
+        guard let content = aiResponse.choices.first?.message.content else {
+            #if DEBUG
+            print("[OpenAIService] No content in response. Choices count: \(aiResponse.choices.count)")
+            #endif
+            throw OpenAIError.decodingError
+        }
+        
+        guard let contentData = content.data(using: .utf8) else {
+            #if DEBUG
+            print("[OpenAIService] Failed to convert content to data")
+            #endif
+            throw OpenAIError.decodingError
+        }
+        
+        #if DEBUG
+        print("[OpenAIService] Content length: \(content.count) characters")
+        print("[OpenAIService] Content preview: \(content.prefix(200))")
+        #endif
         
         do {
-            request.httpBody = try requestBody(text: text, model: model, language: currentLanguage)
+            return try Self.decodeAnalysisResult(from: contentData)
         } catch {
-            completion(.failure(error))
-            return
+            #if DEBUG
+            print("[OpenAIService] Failed to decode analysis result: \(error)")
+            print("[OpenAIService] Content: \(content)")
+            #endif
+            throw OpenAIError.decodingError
         }
-        
-        // 既存のリクエストをキャンセル
-        currentTask?.cancel()
-        
-        // カスタムURLSessionConfigurationを作成（より長いタイムアウト設定とHTTP圧縮）
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300.0  // リクエストタイムアウト: 5分
-        config.timeoutIntervalForResource = 600.0  // リソースタイムアウト: 10分
-        // httpShouldUsePipeliningはiOS 18.4で非推奨のため削除（HTTP/2とHTTP/3が自動的に使用される）
-        config.httpMaximumConnectionsPerHost = 2  // ホストあたりの最大接続数を2に設定
-        let session = URLSession(configuration: config)
-        
-        currentTask = session.dataTask(with: request) { [weak self] data, response, error in
-            defer { self?.currentTask = nil }
-            if let error = error {
-                // タイムアウトエラーの詳細な処理
-                let nsError = error as NSError
-                if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorTimedOut {
-                    let currentLanguage = LanguageManager.shared.currentLanguage
-                    let timeoutMessage = currentLanguage == .japanese 
-                        ? "リクエストがタイムアウトしました。文書が長い場合、処理に時間がかかることがあります。しばらく待ってから再度お試しください。"
-                        : "Request timed out. Long documents may take longer to process. Please wait a moment and try again."
-                    completion(.failure(OpenAIError.apiError(timeoutMessage)))
-                } else {
-                    completion(.failure(error))
-                }
-                return
-            }
-            
-            if let httpResponse = response as? HTTPURLResponse,
-               !(200...299).contains(httpResponse.statusCode) {
-                let errorMessage = String(format: L10n.httpError.text, httpResponse.statusCode)
-                completion(.failure(OpenAIError.apiError(errorMessage)))
-                return
-            }
-            
-            guard let data = data else {
-                completion(.failure(OpenAIError.noData))
-                return
-            }
-            
-            do {
-                let aiResponse = try Self.decodeResponse(from: data)
-                guard let content = aiResponse.choices.first?.message.content,
-                      let contentData = content.data(using: .utf8) else {
-                    completion(.failure(OpenAIError.decodingError))
-                    return
-                }
-                
-                let result = try Self.decodeAnalysisResult(from: contentData)
-                DispatchQueue.main.async {
-                    completion(.success(result))
-                }
-            } catch {
-                #if DEBUG
-                print("Decoding Error: \(error)")
-                #endif
-                completion(.failure(error))
-            }
-        }
-        currentTask?.resume()
     }
     
     private func requestBody(text: String, model: String, language: Language) throws -> Data {
-        let messages: [[String: String]] = [
-            ["role": "system", "content": systemPrompt(for: language)],
-            ["role": "user", "content": "以下の文書を解析してください。\n\n\(text)"]
-        ]
+        // 文字数に応じてmax_tokensを動的に調整
+        // 計算基準:
+        // - 日本語は1文字≈0.3-0.4トークン（入力）
+        // - 出力: 1項目あたり平均300-500トークン
+        // - GPT-4o-miniの制限: 最大16384トークン
+        // - GPT-4oの制限: 最大16384トークン（ただし、より多くの項目を返せる）
+        let textLength = text.count
         
-        let parameters: [String: Any] = [
-            "model": model,
-            "messages": messages,
-            "response_format": ["type": "json_object"],
-            "temperature": 0.3,  // 処理速度向上のため0.3に調整（品質は維持）
-            "max_tokens": 8000  // 出力トークン数を制限して処理時間を短縮
-        ]
+        // モデルごとの最大トークン制限
+        let modelMaxTokens: Int
+        if model.contains("gpt-4o") && !model.contains("mini") {
+            // GPT-4oの場合
+            modelMaxTokens = 16384
+        } else {
+            // GPT-4o-miniの場合
+            modelMaxTokens = 16384
+        }
         
-        return try JSONSerialization.data(withJSONObject: parameters)
+        // 文字数に応じてmax_tokensを計算（ただしモデルの上限を超えない）
+        // 文字数制限は80,000文字に変更されたため、それに合わせて調整
+        let calculatedMaxTokens: Int
+        if textLength <= 10_000 {
+            // 短い文書: 10-25件想定 → 8,000-12,000トークン
+            calculatedMaxTokens = 12_000
+        } else if textLength <= 50_000 {
+            // 中程度: 20-45件想定 → 12,000-16,000トークン
+            calculatedMaxTokens = 16_000
+        } else {
+            // 長い文書（80,000文字まで）: 40-80件想定 → 最大16,000トークン
+            calculatedMaxTokens = 16_000
+        }
+        
+        // モデルの上限を超えないように調整
+        let maxTokens = min(calculatedMaxTokens, modelMaxTokens)
+        
+        let request = OpenAIRequest(
+            model: model,
+            messages: [
+                .init(role: "system", content: systemPrompt(for: language)),
+                .init(role: "user", content: "以下の文書を解析してください。\n\n\(text)")
+            ],
+            responseFormat: .init(type: "json_object"),
+            temperature: 0.3,
+            maxTokens: maxTokens
+        )
+        
+        return try JSONEncoder().encode(request)
     }
     
     private func systemPrompt(for language: Language) -> String {
@@ -192,11 +298,11 @@ class OpenAIService {
         
         **使命**: ユーザーの意思決定や行動に必要な重要情報を**漏らさず・重複なく**抽出すること。
         
-        **【項目数の目安】**
-        - 短い文書（1000文字未満）: 10〜25件程度
-        - 中程度（1000-5000文字）: 20〜45件程度
-        - 長い文書（5000文字以上）: 40〜80件程度
-        ※文書の情報密度や重要度により増減可。品質を優先し、不要な情報は出さない。
+        **【項目数の目安（必須）】**
+        - 短い文書（1000文字未満）: **最低10件以上、推奨20〜25件**
+        - 中程度（1000-5000文字）: **最低20件以上、推奨30〜45件**
+        - 長い文書（5000文字以上）: **最低40件以上、推奨50〜80件**
+        **重要**: 上記の最低件数は必須です。文書の情報密度が低い場合でも、可能な限り多くの項目を抽出してください。5件や10件など少ない件数で終わらせないでください。
         
         **【基本方針】**
         1. **品質優先**: high/medium（行動が必要なリスクや条件）を中心に抽出。infoは補足として最小限。
@@ -212,20 +318,22 @@ class OpenAIService {
         6. **構造情報**: 発効日・改定履歴・準拠法・紛争解決など。
         
         **【解析プロセス】**
-        1. 文書全体を走査し、上記カテゴリから重要情報を抽出
-        2. 同じ金額・条項・期限に関する重複を統合
-        3. high/medium を優先し、infoは補足として最小限に抑える
-        4. 最終チェック: 重要領域の抜け・重複・不要情報を確認
+        1. 文書全体を徹底的に走査し、上記カテゴリから**可能な限り多くの**重要情報を抽出
+        2. 同じ金額・条項・期限に関する重複を統合（ただし、異なる観点の場合は別項目として抽出）
+        3. high/medium を優先し、infoは補足として適切に含める（全体の30%以下を目安）
+        4. **項目数が少なすぎないか確認**: 文書の長さに応じて、最低件数を満たしているか必ず確認
+        5. 最終チェック: 重要領域の抜け・重複・不要情報を確認
         
         **【品質基準】**
         - severity: high（金銭的損失・期限切迫・重大リスク）、medium（確認・交渉が必要）、low（参考情報）、info（背景情報、最小限）
         - 各項目に引用・説明・推奨アクションを含める
         
         【出力ルール】
-        - **網羅性と品質のバランス**: 重要情報を漏らさないが、不要な情報は出さない
-        - **重複統合**: 同じ金額・条項・期限は必ず1項目に統合。異なる観点の場合のみ別項目
-        - **優先順位**: high/medium を優先し、infoは全体の30%以下に抑える
+        - **網羅性が最優先**: 重要情報を漏らさないことが最重要。項目数が多すぎることを恐れず、可能な限り多くの項目を抽出してください。
+        - **重複統合**: 同じ金額・条項・期限は必ず1項目に統合。ただし、異なる観点（例：料金の金額と返金条件）の場合は別項目として抽出
+        - **優先順位**: high/medium を優先し、infoは全体の30%以下に抑える（ただし、最低件数を満たすことが優先）
         - **文体**: 専門用語を避け、背景→影響→対策の順で簡潔に記述
+        - **項目数の確認**: 出力前に必ず項目数を確認し、文書の長さに応じた最低件数を満たしているか確認してください
         \(outputLanguageInstruction)
         \(moneyInstruction)
         - 法的免責: 弁護士ではないため、法的な断定は避け「注意が必要です」「確認をお勧めします」という表現にとどめること。

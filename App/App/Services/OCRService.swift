@@ -1,5 +1,5 @@
 import Foundation
-import Vision
+@preconcurrency import Vision
 import UIKit
 
 class OCRService {
@@ -7,42 +7,69 @@ class OCRService {
     
     private init() {}
     
-    func performOCR(on image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
+    /// async/await版のOCR処理
+    func performOCR(on image: UIImage) async throws -> String {
         guard let cgImage = image.cgImage else {
-            completion(.failure(NSError(domain: "OCRService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image"])))
-            return
+            throw OCRError.invalidImage
         }
         
-        let request = VNRecognizeTextRequest { request, error in
-            if let error = error {
-                completion(.failure(error))
-                return
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+            let request = VNRecognizeTextRequest { request, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                guard let observations = request.results as? [VNRecognizedTextObservation] else {
+                    continuation.resume(returning: "")
+                    return
+                }
+                
+                let recognizedStrings = observations.compactMap { observation in
+                    observation.topCandidates(1).first?.string
+                }
+                
+                let fullText = recognizedStrings.joined(separator: "\n")
+                continuation.resume(returning: fullText)
             }
             
-            guard let observations = request.results as? [VNRecognizedTextObservation] else {
-                completion(.success(""))
-                return
-            }
+            request.recognitionLanguages = ["ja-JP", "en-US"]
+            request.recognitionLevel = .accurate
             
-            let recognizedStrings = observations.compactMap { observation in
-                observation.topCandidates(1).first?.string
-            }
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             
-            let fullText = recognizedStrings.joined(separator: "\n")
-            completion(.success(fullText))
+            // Visionフレームワークの型は実際にはスレッドセーフだが、Sendableに準拠していないため
+            // nonisolatedなコンテキストで実行
+            DispatchQueue.global(qos: .userInitiated).async { [handler, request] in
+                do {
+                    try handler.perform([request])
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
         }
-        
-        request.recognitionLanguages = ["ja-JP", "en-US"]
-        request.recognitionLevel = .accurate
-        
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        
-        DispatchQueue.global(qos: .userInitiated).async {
+    }
+    
+    /// 旧コールバック版（後方互換性のため残す）
+    func performOCR(on image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
+        Task {
             do {
-                try handler.perform([request])
+                let text = try await performOCR(on: image)
+                completion(.success(text))
             } catch {
                 completion(.failure(error))
             }
+        }
+    }
+}
+
+enum OCRError: LocalizedError {
+    case invalidImage
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidImage:
+            return "無効な画像です"
         }
     }
 }

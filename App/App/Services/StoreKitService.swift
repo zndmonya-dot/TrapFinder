@@ -36,12 +36,16 @@ enum UserPlan: String, CaseIterable {
     }
     
     // 1回の文字数制限
+    // GPT-4o-mini/GPT-4oのmax_tokens上限（16384）に合わせて調整
+    // 計算: 入力テキスト + プロンプト + 出力(max_tokens) = 128K以内
+    // 安全マージンを考慮して、入力テキストは約40,000トークン（約100,000文字）まで
+    // ただし、より確実に動作させるため、80,000文字に制限
     var characterLimit: Int {
         switch self {
         case .free:
             return 10_000
         case .standard, .pro:
-            return 100_000
+            return 80_000  // 100,000から80,000に変更（max_tokens上限に合わせて）
         }
     }
 }
