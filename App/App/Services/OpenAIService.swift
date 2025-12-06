@@ -225,11 +225,11 @@ class OpenAIService: OpenAIAnalyzing {
         
         do {
             return try Self.decodeAnalysisResult(from: contentData)
-        } catch {
-            #if DEBUG
+            } catch {
+                #if DEBUG
             print("[OpenAIService] Failed to decode analysis result: \(error)")
             print("[OpenAIService] Content: \(content)")
-            #endif
+                #endif
             throw OpenAIError.decodingError
         }
     }
@@ -254,7 +254,7 @@ class OpenAIService: OpenAIAnalyzing {
         }
         
         // 文字数に応じてmax_tokensを計算（ただしモデルの上限を超えない）
-        // 文字数制限は80,000文字に変更されたため、それに合わせて調整
+        // 文字数制限は50,000文字に変更されたため、それに合わせて調整
         let calculatedMaxTokens: Int
         if textLength <= 10_000 {
             // 短い文書: 10-25件想定 → 8,000-12,000トークン
@@ -263,7 +263,7 @@ class OpenAIService: OpenAIAnalyzing {
             // 中程度: 20-45件想定 → 12,000-16,000トークン
             calculatedMaxTokens = 16_000
         } else {
-            // 長い文書（80,000文字まで）: 40-80件想定 → 最大16,000トークン
+            // 長い文書（50,000文字まで）: 40-80件想定 → 最大16,000トークン
             calculatedMaxTokens = 16_000
         }
         

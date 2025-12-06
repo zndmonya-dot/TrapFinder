@@ -56,7 +56,7 @@
 - **説明**: 
   ```
   • スキャン回数: 無制限
-  • 文字数制限: 100,000文字/回
+  • 文字数制限: 50,000文字/回
   • AIモデル: GPT-4o-mini
   ```
 
@@ -65,7 +65,7 @@
 - **説明**:
   ```
   • Unlimited scans per day
-  • Character limit: 100,000 per scan
+  • Character limit: 50,000 per scan
   • AI Model: GPT-4o-mini
   ```
 

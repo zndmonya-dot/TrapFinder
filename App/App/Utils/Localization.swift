@@ -138,7 +138,7 @@ enum L10n {
     static var standardAI: LocalizedString { LocalizedString(ja: "標準AI (GPT-4o-mini)", en: "Standard AI") }
     static var highPerformanceAI: LocalizedString { LocalizedString(ja: "高性能AI (GPT-4o)", en: "High-Performance AI") }
     static var charLimit10k: LocalizedString { LocalizedString(ja: "1回 10,000文字まで", en: "10k chars / scan") }
-    static var charLimit100k: LocalizedString { LocalizedString(ja: "1回 100,000文字まで", en: "100k chars / scan") }
+    static var charLimit100k: LocalizedString { LocalizedString(ja: "1回 50,000文字まで", en: "50k chars / scan") }
     static var charLimit50k: LocalizedString { LocalizedString(ja: "1回 50,000文字まで", en: "50k chars / scan") }
     static var limit10perDay: LocalizedString { LocalizedString(ja: "1日10回まで（制限到達時は自動で標準AIに切り替え）", en: "10 times / day (auto-switch to standard AI when limit reached)") }
     static var detailedAnalysis: LocalizedString { LocalizedString(ja: "より詳細なAI解説", en: "Detailed AI Analysis") }
@@ -196,11 +196,11 @@ enum L10n {
     
     // Scanner View
     static var tokenLimitTitle: LocalizedString { LocalizedString(ja: "文字数が多すぎます", en: "Text Too Long") }
-    static var tokenLimitMessage: LocalizedString { LocalizedString(ja: "読み取った文字数が100,000文字を超えています。\nすべて解析すると時間がかかり、エラーになる可能性があります。\n\n先頭の100,000文字だけ解析しますか？", en: "The scanned text exceeds 100,000 characters.\nAnalyzing all of it may take time and could cause errors.\n\nWould you like to analyze only the first 100,000 characters?") }
+    static var tokenLimitMessage: LocalizedString { LocalizedString(ja: "読み取った文字数が50,000文字を超えています。\nすべて解析すると時間がかかり、エラーになる可能性があります。\n\n先頭の50,000文字だけ解析しますか？", en: "The scanned text exceeds 50,000 characters.\nAnalyzing all of it may take time and could cause errors.\n\nWould you like to analyze only the first 50,000 characters?") }
     static var analyzeTruncated: LocalizedString { LocalizedString(ja: "先頭のみ解析する", en: "Analyze First Part Only") }
     static var webPageInputHint: LocalizedString { LocalizedString(ja: "利用規約やプライバシーポリシーのページURLを入力してください。", en: "Enter the URL of the terms of service or privacy policy page.") }
     static var load: LocalizedString { LocalizedString(ja: "読み込む", en: "Load") }
-    static var textInputLimit: LocalizedString { LocalizedString(ja: "※100,000文字まで入力可能です", en: "※Up to 100,000 characters can be entered") }
+    static var textInputLimit: LocalizedString { LocalizedString(ja: "※50,000文字まで入力可能です", en: "※Up to 50,000 characters can be entered") }
     static var done: LocalizedString { LocalizedString(ja: "完了", en: "Done") }
     
     // Analysis Result View
