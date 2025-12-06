@@ -350,8 +350,17 @@ class ScannerViewModel: ObservableObject {
                 if text.isEmpty {
                     self.flowState = .error(L10n.webPageLoadError.text)
                 } else {
-                    self.scannedText = text
-                    self.flowState = .idle
+                    let (limitedText, truncated) = self.clampTextToLimit(text)
+                    self.scannedText = limitedText
+                    if truncated {
+                        let limit = storeKitService.currentPlan.characterLimit
+                        let message = LanguageManager.shared.currentLanguage == .japanese
+                        ? "読み取ったテキストが上限（\(limit)文字）を超えたため、先頭\(limit)文字のみ保持しました。"
+                        : "The fetched text exceeds the limit (\(limit) chars). Kept only the first \(limit) characters."
+                        self.flowState = .error(message)
+                    } else {
+                        self.flowState = .idle
+                    }
                 }
             } catch {
                 let errorMsg = self.errorMessage(from: error)
@@ -369,8 +378,17 @@ class ScannerViewModel: ObservableObject {
                 if fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     self.flowState = .error(L10n.textRecognitionError.text)
                 } else {
-                    self.scannedText = fullText
-                    self.flowState = .idle
+                    let (limitedText, truncated) = self.clampTextToLimit(fullText)
+                    self.scannedText = limitedText
+                    if truncated {
+                        let limit = storeKitService.currentPlan.characterLimit
+                        let message = LanguageManager.shared.currentLanguage == .japanese
+                        ? "読み取ったテキストが上限（\(limit)文字）を超えたため、先頭\(limit)文字のみ保持しました。"
+                        : "Scanned text exceeds the limit (\(limit) chars). Kept only the first \(limit) characters."
+                        self.flowState = .error(message)
+                    } else {
+                        self.flowState = .idle
+                    }
                     #if DEBUG
                     print("[ScannerViewModel] OCR completed. Total text length: \(fullText.count) characters")
                     #endif
@@ -466,6 +484,14 @@ class ScannerViewModel: ObservableObject {
         text.count > storeKitService.currentPlan.characterLimit
     }
     
+    /// 入力テキストを現在プランの上限に合わせて切り詰める
+    private func clampTextToLimit(_ text: String) -> (String, Bool) {
+        let limit = storeKitService.currentPlan.characterLimit
+        guard text.count > limit else { return (text, false) }
+        let limited = String(text.prefix(limit))
+        return (limited, true)
+    }
+    
     private func performAnalysis(textOverride: String? = nil) {
         #if !DEBUG
         // 本番環境でのみプランチェック
@@ -506,7 +532,7 @@ class ScannerViewModel: ObservableObject {
             do {
                 let analysis = try await aiService.analyzeContract(text: textToAnalyze, model: model)
                 await MainActor.run {
-                    self.stopProgressTimer()
+                self.stopProgressTimer()
                     self.flowState = .idle
                     // analysisResultを先に設定してから、activeSheetを設定
                     self.analysisResult = analysis

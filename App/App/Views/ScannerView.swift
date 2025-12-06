@@ -69,16 +69,16 @@ struct ScannerView: View {
                 switch sheet {
                 case .analysisResult:
                     // analysisResultがnilの場合はシートを表示しない
-                    if let result = viewModel.analysisResult {
-                        AnalysisResultView(result: result)
+                if let result = viewModel.analysisResult {
+                    AnalysisResultView(result: result)
                     } else {
                         // analysisResultがnilの場合は何も表示しない（シートは自動的に閉じる）
                         EmptyView()
-                    }
+                }
                 case .imagePicker:
-                    ImagePicker(onImagesPicked: { images in
-                        viewModel.handleImageSelection(images: images)
-                    })
+                ImagePicker(onImagesPicked: { images in
+                    viewModel.handleImageSelection(images: images)
+                })
                 case .textInput:
                     TextInputView(text: $viewModel.scannedText, characterLimit: storeKitService.currentPlan.characterLimit)
                 case .urlInput:
@@ -615,6 +615,10 @@ struct TextInputView: View {
             : "※Up to \(characterLimit) characters can be entered"
     }
     
+    private var counterText: String {
+        "\(text.count)/\(characterLimit)"
+    }
+    
     var body: some View {
         NavigationView {
             VStack(alignment: .leading, spacing: 16) {
@@ -631,12 +635,22 @@ struct TextInputView: View {
                     .cornerRadius(16)
                     .shadow(color: Color.black.opacity(0.05), radius: 5)
                     .padding(.horizontal)
+                    .onChange(of: text) { newValue in
+                        if newValue.count > characterLimit {
+                            text = String(newValue.prefix(characterLimit))
+                        }
+                    }
                 
                 Text(limitText)
                     .font(.system(.caption, design: .rounded))
                     .foregroundColor(.secondary)
                     .padding(.horizontal)
                     .padding(.bottom)
+                
+                Text(counterText)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
             }
             .background(Color(hex: "FFF8F0").ignoresSafeArea())
             .navigationTitle(L10n.textInput.text)
