@@ -47,8 +47,8 @@ TrapFinderは、契約書や利用規約などの文書をAIが解析し、ユ�
 
 【プラン】
 • フリープラン: 10,000文字/回まで無料
-• スタンダードプラン: 50,000文字/回、無制限スキャン（¥780/月）
-• プロプラン: GPT-4o使用、1日10回まで（¥1,180/月）
+• スタンダードプラン: 50,000文字/回、無制限スキャン（¥280/月）
+• プロプラン: GPT-4o使用、1日10回まで（¥580/月）
 
 ※本アプリは法的助言を提供するものではありません。あくまでユーザー自身の読解と判断をサポートする補助ツールです。
 ```
@@ -70,8 +70,8 @@ TrapFinder is an AI-powered document analysis tool that analyzes contracts and t
 
 【Plans】
 • Free Plan: Up to 10,000 characters per scan
-• Standard Plan: 50,000 characters per scan, unlimited scans (¥780/month)
-• Pro Plan: GPT-4o, up to 10 times per day (¥1,180/month)
+• Standard Plan: 50,000 characters per scan, unlimited scans (¥280/month)
+• Pro Plan: GPT-4o, up to 10 times per day (¥580/month)
 
 ※This app does not provide legal advice. It is a supplementary tool to support users' own reading and judgment.
 ```

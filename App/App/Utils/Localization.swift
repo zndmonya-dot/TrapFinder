@@ -130,9 +130,9 @@ enum L10n {
     static var upgradeTitle: LocalizedString { LocalizedString(ja: "プランを選択", en: "Choose Your Plan") }
     static var upgradeSubtitle: LocalizedString { LocalizedString(ja: "あなたの利用スタイルに合わせて\n最適なプランをお選びください", en: "Choose the plan that fits your style") }
     
-    static var standardPrice: LocalizedString { LocalizedString(ja: "¥780 / 月", en: "¥780 / Month") }
+    static var standardPrice: LocalizedString { LocalizedString(ja: "¥280 / 月", en: "¥280 / Month") }
     static var freePrice: LocalizedString { LocalizedString(ja: "無料", en: "Free") }
-    static var proPrice: LocalizedString { LocalizedString(ja: "¥1,180 / 月", en: "¥1,180 / Month") }
+    static var proPrice: LocalizedString { LocalizedString(ja: "¥580 / 月", en: "¥580 / Month") }
     
     static var unlimitedScans: LocalizedString { LocalizedString(ja: "回数無制限", en: "Unlimited Scans") }
     static var standardAI: LocalizedString { LocalizedString(ja: "標準AI (GPT-4o-mini)", en: "Standard AI") }
