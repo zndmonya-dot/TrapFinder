@@ -194,12 +194,9 @@ class StoreKitService: NSObject, ObservableObject {
         }
         
         // プランを更新
-        #if DEBUG
-        // デバッグモードでは常にスタンダードプラン（テスト用）
-        currentPlan = .standard
-        #else
-        currentPlan = hasActiveSubscription ? .standard : .free
-        #endif
+        await MainActor.run {
+            currentPlan = hasActiveSubscription ? .standard : .free
+        }
     }
     
     func checkDailyLimit() {

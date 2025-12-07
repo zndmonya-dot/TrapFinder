@@ -16,22 +16,17 @@ struct SettingsView: View {
     #if DEBUG
     // デバッグ用: サブスクリプション状態をリセット
     private func resetSubscription() {
-        // UserDefaultsのキーをクリア
-        UserDefaults.standard.removeObject(forKey: "scanCount_\(currentDateKey())")
-        UserDefaults.standard.synchronize()
-        
         // StoreKitServiceの状態を更新
         Task {
             await storeKitService.updateSubscriptionStatus()
+            
+            // メインスレッドで確認メッセージを表示
+            await MainActor.run {
+                let plan = storeKitService.currentPlan
+                let planName = plan == .free ? "フリープラン" : plan == .standard ? "スタンダードプラン" : "プロプラン"
+                print("✅ サブスクリプション状態を更新: \(planName)")
+            }
         }
-        
-        print("✅ サブスクリプション状態をリセットしました")
-    }
-    
-    private func currentDateKey() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: Date())
     }
     #endif
     
