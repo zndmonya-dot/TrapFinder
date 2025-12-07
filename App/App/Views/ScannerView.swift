@@ -311,8 +311,8 @@ struct ScannerContentView: View {
                             viewModel.analyzeContract()
                         } label: {
                             HStack {
-                                Image(systemName: storeKitService.currentPlan == .free ? "play.rectangle.fill" : "sparkles")
-                                Text(storeKitService.currentPlan == .free ? L10n.watchAdToAnalyze.text : L10n.analyzeButton.text)
+                                Image(systemName: "sparkles")
+                                Text(L10n.analyzeButton.text)
                                     .fontWeight(.bold)
                             }
                             .font(.system(.title3, design: .rounded))
@@ -323,30 +323,8 @@ struct ScannerContentView: View {
                             .cornerRadius(20)
                             .shadow(color: Color(hex: "E07A5F").opacity(0.4), radius: 10, x: 0, y: 5)
                         }
-                        .disabled(storeKitService.currentPlan == .free && !adMobManager.isAdReady)
-                        .opacity(storeKitService.currentPlan == .free && !adMobManager.isAdReady ? 0.5 : 1.0)
                         .padding(.horizontal, 24)
-                        
-                        // 広告読み込み中のメッセージ（フリープランのみ）
-                        if storeKitService.currentPlan == .free && !adMobManager.isAdReady {
-                            if adMobManager.isLoadingAd {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                    Text("広告を準備中...")
-                                        .font(.system(.caption, design: .rounded))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 24)
-                            } else {
-                                Text("広告の読み込みに時間がかかっています...")
-                                    .font(.system(.caption, design: .rounded))
-                                    .foregroundColor(.orange)
-                                    .padding(.horizontal, 24)
-                            }
-                        }
-                        
-                        Spacer().frame(height: 30)
+                        .padding(.bottom, 30)
                     }
                 }
             }
