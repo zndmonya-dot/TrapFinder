@@ -488,6 +488,7 @@ class ScannerViewModel: ObservableObject {
         // デバッグ環境: 広告が準備できていない場合は直接解析を実行
         if !adMobManager.isAdReady {
             print("🔧 DEBUG: 広告が準備できていないため、広告をスキップして解析を実行します")
+            print("💡 ヒント: AdMobの審査が完了するまで数時間かかる場合があります")
             performAnalysis()
             return
         }
