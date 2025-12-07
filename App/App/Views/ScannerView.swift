@@ -638,7 +638,7 @@ struct TextInputView: View {
                     .cornerRadius(16)
                     .shadow(color: Color.black.opacity(0.05), radius: 5)
                     .padding(.horizontal)
-                    .onChange(of: text) { newValue in
+                    .onChange(of: text) { _, newValue in
                         if newValue.count > characterLimit {
                             text = String(newValue.prefix(characterLimit))
                         }
