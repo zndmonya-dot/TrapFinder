@@ -311,8 +311,8 @@ struct ScannerContentView: View {
                             viewModel.analyzeContract()
                         } label: {
                             HStack {
-                                Image(systemName: "sparkles")
-                                Text(L10n.analyzeButton.text)
+                                Image(systemName: storeKitService.currentPlan == .free ? "play.rectangle.fill" : "sparkles")
+                                Text(storeKitService.currentPlan == .free ? L10n.watchAdToAnalyze.text : L10n.analyzeButton.text)
                                     .fontWeight(.bold)
                             }
                             .font(.system(.title3, design: .rounded))

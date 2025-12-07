@@ -473,8 +473,13 @@ class ScannerViewModel: ObservableObject {
             return
         }
         
-        // 全プランで直接解析（広告機能は後のアップデートで追加）
-        performAnalysis()
+        // 無料プランの場合は広告視聴が必要
+        if storeKitService.currentPlan == .free {
+            showAdAndAnalyze()
+        } else {
+            // 有料プランは直接解析
+            performAnalysis()
+        }
     }
     
     /// 広告を表示してから解析を実行（無料プラン専用）

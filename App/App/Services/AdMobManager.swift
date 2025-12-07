@@ -23,12 +23,8 @@ class AdMobManager: NSObject, ObservableObject {
     private var adLoadRetryCount = 0
     private let maxAdLoadRetries = 3 // 最大リトライ回数
     
-    // テスト用広告ユニットID（本番環境では実際のIDに置き換える）
-    #if DEBUG
-    private let adUnitID = "ca-app-pub-3940256099942544/1712485313" // Googleのテスト用ID
-    #else
-    private let adUnitID = "YOUR_PRODUCTION_AD_UNIT_ID" // 本番用のAdMob広告ユニットIDをここに設定
-    #endif
+    // 本番用広告ユニットID
+    private let adUnitID = "ca-app-pub-2477585454032901/5825870847"
     
     private override init() {
         super.init()
