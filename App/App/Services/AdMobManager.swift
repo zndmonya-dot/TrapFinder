@@ -20,6 +20,8 @@ class AdMobManager: NSObject, ObservableObject {
     
     private var rewardedAd: RewardedAd?
     private var onAdDismissed: ((Bool) -> Void)?
+    private var adLoadRetryCount = 0
+    private let maxAdLoadRetries = 3 // 最大リトライ回数
     
     // テスト用広告ユニットID（本番環境では実際のIDに置き換える）
     #if DEBUG
@@ -35,8 +37,12 @@ class AdMobManager: NSObject, ObservableObject {
     /// AdMob SDKを初期化
     func initializeAdMob() {
         #if DEBUG
-        // テストデバイスを設定
-        MobileAds.shared.requestConfiguration.testDeviceIdentifiers = ["520039aee5efbde5ab82a7bc562e40b2"]
+        // テストデバイスを設定（シミュレーターごとに異なる場合があります）
+        MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
+            "520039aee5efbde5ab82a7bc562e40b2",  // 旧デバイスID
+            "5282e503fae41f3d8fee42f3c23900d4"   // 新デバイスID
+        ]
+        print("🔧 テストデバイスIDを設定しました")
         #endif
         
         MobileAds.shared.start { [weak self] _ in
@@ -57,7 +63,7 @@ class AdMobManager: NSObject, ObservableObject {
         
         let request = Request()
         
-        print("📡 リワード広告を読み込み中...")
+        print("📡 リワード広告を読み込み中... (試行: \(adLoadRetryCount + 1)/\(maxAdLoadRetries + 1))")
         print("   広告ユニットID: \(adUnitID)")
         
         RewardedAd.load(with: adUnitID, request: request) { [weak self] ad, error in
@@ -73,16 +79,23 @@ class AdMobManager: NSObject, ObservableObject {
                     self.isAdReady = false
                     
                     #if DEBUG
-                    // デバッグ環境: 5秒後に再試行
-                    print("🔄 5秒後に広告読み込みを再試行します...")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                        self.loadRewardedAd()
+                    // デバッグ環境: 最大リトライ回数まで再試行
+                    if self.adLoadRetryCount < self.maxAdLoadRetries {
+                        self.adLoadRetryCount += 1
+                        print("🔄 5秒後に広告読み込みを再試行します... (\(self.adLoadRetryCount)/\(self.maxAdLoadRetries))")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                            self.loadRewardedAd()
+                        }
+                    } else {
+                        print("⚠️ 広告の読み込みリトライ上限に達しました")
+                        print("💡 ヒント: シミュレーターを再起動するか、ネットワーク接続を確認してください")
                     }
                     #endif
                     return
                 }
                 
                 print("✅ リワード広告の読み込み成功")
+                self.adLoadRetryCount = 0 // 成功したらリトライカウントをリセット
                 self.rewardedAd = ad
                 self.rewardedAd?.fullScreenContentDelegate = self
                 self.isAdReady = true
