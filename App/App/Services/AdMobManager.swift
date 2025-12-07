@@ -1,8 +1,10 @@
 import Foundation
 import GoogleMobileAds
 import UIKit
+import Combine
 
 /// Google AdMobのリワード広告を管理するクラス
+@MainActor
 class AdMobManager: NSObject, ObservableObject {
     static let shared = AdMobManager()
     
@@ -19,7 +21,7 @@ class AdMobManager: NSObject, ObservableObject {
     private let adUnitID = "YOUR_PRODUCTION_AD_UNIT_ID" // 本番用のAdMob広告ユニットIDをここに設定
     #endif
     
-    override private init() {
+    private override init() {
         super.init()
     }
     
