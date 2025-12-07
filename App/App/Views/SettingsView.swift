@@ -13,6 +13,28 @@ struct SettingsView: View {
         endPoint: .bottomTrailing
     )
     
+    #if DEBUG
+    // デバッグ用: サブスクリプション状態をリセット
+    private func resetSubscription() {
+        // UserDefaultsのキーをクリア
+        UserDefaults.standard.removeObject(forKey: "scanCount_\(currentDateKey())")
+        UserDefaults.standard.synchronize()
+        
+        // StoreKitServiceの状態を更新
+        Task {
+            await storeKitService.updateSubscriptionStatus()
+        }
+        
+        print("✅ サブスクリプション状態をリセットしました")
+    }
+    
+    private func currentDateKey() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
+    #endif
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -101,6 +123,22 @@ struct SettingsView: View {
                                 )
                             }
                         }
+                        
+                        #if DEBUG
+                        // デバッグセクション（開発環境のみ）
+                        SettingsSection(title: "🔧 デバッグ") {
+                            Button {
+                                resetSubscription()
+                            } label: {
+                                SettingsRow(
+                                    icon: "arrow.counterclockwise",
+                                    title: "サブスクリプションをリセット",
+                                    iconColor: Color.red,
+                                    showDivider: false
+                                )
+                            }
+                        }
+                        #endif
                         
                         Spacer(minLength: 40)
                     }
