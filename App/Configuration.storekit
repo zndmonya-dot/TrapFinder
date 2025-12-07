@@ -1,0 +1,130 @@
+{
+  "identifier" : "D68D8B41",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6739097559",
+    "_developerTeamID" : "HVVM56C865",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 765493335.49055004,
+    "_locale" : "ja_JP",
+    "_storefront" : "JPN",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21535072",
+      "localizations" : [
+
+      ],
+      "name" : "TrapFinder Subscriptions",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "280",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6739097558",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "50,000文字まで、広告なし",
+              "displayName" : "スタンダードプラン",
+              "locale" : "ja"
+            }
+          ],
+          "productID" : "standard_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Standard Monthly",
+          "subscriptionGroupID" : "21535072",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "580",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6739097560",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "高性能AI (GPT-4o)、50,000文字まで、広告なし",
+              "displayName" : "プロプラン",
+              "locale" : "ja"
+            }
+          ],
+          "productID" : "pro_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Pro Monthly",
+          "subscriptionGroupID" : "21535072",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
+

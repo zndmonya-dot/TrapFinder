@@ -34,8 +34,13 @@ class AdMobManager: NSObject, ObservableObject {
     
     /// AdMob SDKを初期化
     func initializeAdMob() {
+        #if DEBUG
+        // テストデバイスを設定
+        MobileAds.shared.requestConfiguration.testDeviceIdentifiers = ["520039aee5efbde5ab82a7bc562e40b2"]
+        #endif
+        
         MobileAds.shared.start { [weak self] _ in
-            print("AdMob初期化完了")
+            print("✅ AdMob初期化完了")
             self?.loadRewardedAd()
         }
     }
