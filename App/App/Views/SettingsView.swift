@@ -98,25 +98,14 @@ struct SettingsView: View {
                         
                         // アプリ情報セクション
                         SettingsSection(title: L10n.appInfo.text) {
-                            VStack(spacing: 0) {
-                                SettingsRow(
-                                    icon: "info.circle.fill",
-                                    title: L10n.version.text,
-                                    value: "1.0.0",
-                                    iconColor: Color(hex: "3D405B"), // ダークブルー
-                                    showChevron: false,
-                                    showDivider: true
-                                )
-                                
-                                SettingsRow(
-                                    icon: "person.2.fill",
-                                    title: L10n.developer.text,
-                                    value: "Contract Companion Team",
-                                    iconColor: Color(hex: "3D405B"),
-                                    showChevron: false,
-                                    showDivider: false
-                                )
-                            }
+                            SettingsRow(
+                                icon: "info.circle.fill",
+                                title: L10n.version.text,
+                                value: "1.0.0",
+                                iconColor: Color(hex: "3D405B"),
+                                showChevron: false,
+                                showDivider: false
+                            )
                         }
                         
                         #if DEBUG
