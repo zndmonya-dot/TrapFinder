@@ -49,6 +49,12 @@ struct LegalDisclaimerView: View {
                             content: L10n.legalText4.text,
                             icon: "lock.fill"
                         )
+                        
+                        DisclaimerItem(
+                            title: L10n.legalHeader5.text,
+                            content: L10n.legalText5.text,
+                            icon: "doc.text.fill"
+                        )
                     }
                     .padding(24)
                 }

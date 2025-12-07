@@ -187,7 +187,9 @@ enum L10n {
     static var legalText3: LocalizedString { LocalizedString(ja: "法的トラブルが発生している案件の証拠として、本アプリの結果を使用することはできません。", en: "Results cannot be used as evidence in legal disputes.") }
     static var legalHeader4: LocalizedString { LocalizedString(ja: "4. 機密情報の扱い", en: "4. Data Privacy") }
     static var legalText4: LocalizedString { LocalizedString(ja: "読み取られたデータはOpenAI APIを通じて処理されます。機密性の高い情報の入力には十分ご注意ください。", en: "Data is processed via OpenAI API. Please be careful with confidential information.") }
-    static var agreeButton: LocalizedString { LocalizedString(ja: "上記に同意して利用を開始する", en: "I Agree & Start Using") }
+    static var legalHeader5: LocalizedString { LocalizedString(ja: "5. 利用規約とプライバシーポリシー", en: "5. Terms & Privacy") }
+    static var legalText5: LocalizedString { LocalizedString(ja: "本アプリの利用には、利用規約とプライバシーポリシーへの同意が必要です。詳細は設定画面からご確認いただけます。", en: "By using this app, you agree to our Terms of Service and Privacy Policy. You can review them in Settings.") }
+    static var agreeButton: LocalizedString { LocalizedString(ja: "同意して利用を開始", en: "Agree & Start") }
     
     // Settings View
     static var general: LocalizedString { LocalizedString(ja: "一般", en: "General") }
