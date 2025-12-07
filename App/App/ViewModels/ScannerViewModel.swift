@@ -484,11 +484,20 @@ class ScannerViewModel: ObservableObject {
     
     /// 広告を表示してから解析を実行（無料プラン専用）
     func showAdAndAnalyze() {
-        // 広告の準備状況をチェック
+        #if DEBUG
+        // デバッグ環境: 広告が準備できていない場合は直接解析を実行
+        if !adMobManager.isAdReady {
+            print("🔧 DEBUG: 広告が準備できていないため、広告をスキップして解析を実行します")
+            performAnalysis()
+            return
+        }
+        #else
+        // 本番環境: 広告が必須
         guard adMobManager.isAdReady else {
             flowState = .error(L10n.adNotReady.text)
             return
         }
+        #endif
         
         // 現在のUIViewControllerを取得
         guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
@@ -508,7 +517,13 @@ class ScannerViewModel: ObservableObject {
             } else {
                 // 広告視聴失敗
                 DispatchQueue.main.async {
+                    #if DEBUG
+                    // デバッグ環境: 失敗しても解析を実行
+                    print("🔧 DEBUG: 広告表示に失敗しましたが、解析を続行します")
+                    self.performAnalysis()
+                    #else
                     self.flowState = .error(L10n.adLoadingError.text)
+                    #endif
                 }
             }
         }
