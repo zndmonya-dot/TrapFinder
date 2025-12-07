@@ -482,51 +482,66 @@ class ScannerViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Ad-Related Analysis
+    
     /// 広告を表示してから解析を実行（無料プラン専用）
     func showAdAndAnalyze() {
         #if DEBUG
-        // デバッグ環境: 広告が準備できていない場合は直接解析を実行
-        if !adMobManager.isAdReady {
-            print("🔧 DEBUG: 広告が準備できていないため、広告をスキップして解析を実行します")
-            print("💡 ヒント: AdMobの審査が完了するまで数時間かかる場合があります")
-            performAnalysis()
+        guard adMobManager.isAdReady else {
+            handleAdNotReadyInDebug()
             return
         }
         #else
-        // 本番環境: 広告が必須
         guard adMobManager.isAdReady else {
             flowState = .error(L10n.adNotReady.text)
             return
         }
         #endif
         
-        // 現在のUIViewControllerを取得
-        guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
+        guard let rootViewController = getRootViewController() else {
             flowState = .error(L10n.adLoadingError.text)
             return
         }
         
-        // 広告を表示
-        adMobManager.showRewardedAd(from: rootViewController) { [weak self] didEarnReward in
+        presentAdAndAnalyze(from: rootViewController)
+    }
+    
+    #if DEBUG
+    private func handleAdNotReadyInDebug() {
+        print("🔧 DEBUG: 広告が準備できていないため、広告をスキップして解析を実行します")
+        print("💡 ヒント: AdMobの審査が完了するまで数時間かかる場合があります")
+        performAnalysis()
+    }
+    #endif
+    
+    private func getRootViewController() -> UIViewController? {
+        UIApplication.shared.windows.first?.rootViewController
+    }
+    
+    private func presentAdAndAnalyze(from viewController: UIViewController) {
+        adMobManager.showRewardedAd(from: viewController) { [weak self] didEarnReward in
+            self?.handleAdResult(didEarnReward: didEarnReward)
+        }
+    }
+    
+    private func handleAdResult(didEarnReward: Bool) {
+        DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            if didEarnReward {
-                // 広告視聴完了後、解析を実行
-                DispatchQueue.main.async {
-                    self.performAnalysis()
-                }
-            } else {
-                // 広告視聴失敗
-                DispatchQueue.main.async {
-                    #if DEBUG
-                    // デバッグ環境: 失敗しても解析を実行
-                    print("🔧 DEBUG: 広告表示に失敗しましたが、解析を続行します")
-                    self.performAnalysis()
-                    #else
-                    self.flowState = .error(L10n.adLoadingError.text)
-                    #endif
-                }
+            #if DEBUG
+            // デバッグ環境: 成功/失敗に関わらず解析を実行
+            if !didEarnReward {
+                print("🔧 DEBUG: 広告表示に失敗しましたが、解析を続行します")
             }
+            self.performAnalysis()
+            #else
+            // 本番環境: 成功時のみ解析を実行
+            if didEarnReward {
+                self.performAnalysis()
+            } else {
+                self.flowState = .error(L10n.adLoadingError.text)
+            }
+            #endif
         }
     }
     
