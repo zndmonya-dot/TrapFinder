@@ -170,7 +170,7 @@ class AdMobManager: NSObject, ObservableObject {
         }
     }
     
-    private func handleAdReward(_ reward: GADAdReward) {
+    private func handleAdReward(_ reward: AdReward) {
         print("✅ ユーザーが報酬を獲得: \(reward.amount) \(reward.type)")
         loadRewardedAd() // 次の広告を事前読み込み
     }
