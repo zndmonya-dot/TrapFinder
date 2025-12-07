@@ -58,6 +58,7 @@ class AdMobManager: NSObject, ObservableObject {
         let request = Request()
         
         print("📡 リワード広告を読み込み中...")
+        print("   広告ユニットID: \(adUnitID)")
         
         RewardedAd.load(with: adUnitID, request: request) { [weak self] ad, error in
             guard let self = self else { return }
@@ -69,13 +70,14 @@ class AdMobManager: NSObject, ObservableObject {
                     print("❌ リワード広告の読み込み失敗: \(error.localizedDescription)")
                     print("   エラー詳細: \(error)")
                     self.rewardedAd = nil
+                    self.isAdReady = false
                     
                     #if DEBUG
-                    // デバッグ環境では広告なしで続行可能にする
-                    print("🔧 DEBUG: 広告スキップモードを有効化")
-                    self.isAdReady = true // デバッグ環境では広告なしでも続行
-                    #else
-                    self.isAdReady = false
+                    // デバッグ環境: 5秒後に再試行
+                    print("🔄 5秒後に広告読み込みを再試行します...")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                        self.loadRewardedAd()
+                    }
                     #endif
                     return
                 }
@@ -93,22 +95,13 @@ class AdMobManager: NSObject, ObservableObject {
     ///   - rootViewController: 広告を表示する親ViewController
     ///   - completion: 広告が閉じられた後のコールバック（報酬を獲得したかどうか）
     func showRewardedAd(from rootViewController: UIViewController, completion: @escaping (Bool) -> Void) {
-        #if DEBUG
-        // デバッグ環境: 広告がなくても続行
-        guard let rewardedAd = rewardedAd else {
-            print("🔧 DEBUG: 広告なしでスキップ（テスト用）")
-            completion(true) // 広告なしでも成功として扱う
-            loadRewardedAd() // 次の広告を読み込み試行
-            return
-        }
-        #else
-        // 本番環境: 広告が必須
         guard let rewardedAd = rewardedAd else {
             print("❌ リワード広告が準備できていません")
+            print("   広告を再読み込みしています...")
             completion(false)
+            loadRewardedAd() // 広告を再読み込み
             return
         }
-        #endif
         
         self.onAdDismissed = completion
         

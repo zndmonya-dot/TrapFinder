@@ -326,7 +326,27 @@ struct ScannerContentView: View {
                         .disabled(storeKitService.currentPlan == .free && !adMobManager.isAdReady)
                         .opacity(storeKitService.currentPlan == .free && !adMobManager.isAdReady ? 0.5 : 1.0)
                         .padding(.horizontal, 24)
-                        .padding(.bottom, 30)
+                        
+                        // 広告読み込み中のメッセージ（フリープランのみ）
+                        if storeKitService.currentPlan == .free && !adMobManager.isAdReady {
+                            if adMobManager.isLoadingAd {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("広告を準備中...")
+                                        .font(.system(.caption, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 24)
+                            } else {
+                                Text("広告の読み込みに時間がかかっています...")
+                                    .font(.system(.caption, design: .rounded))
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 24)
+                            }
+                        }
+                        
+                        Spacer().frame(height: 30)
                     }
                 }
             }
