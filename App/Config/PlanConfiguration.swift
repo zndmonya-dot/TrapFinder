@@ -4,10 +4,10 @@ import Foundation
 /// 実際の製品IDはApp Store Connectで設定した値と一致させる必要があります
 enum PlanConfiguration {
     /// Standardプランの製品ID（App Store Connectで設定）
-    static let standardPlanID = "standard_monthly"
+    static let standardPlanID = "trapfinder_standard_v1"
     
     /// Proプランの製品ID（将来用）
-    static let proPlanID = "pro_monthly"
+    static let proPlanID = "trapfinder_pro_v1"
     
     /// UserPlanから製品IDに変換
     static func productID(for plan: UserPlan) -> String? {

@@ -88,7 +88,7 @@
               "locale" : "ja"
             }
           ],
-          "productID" : "standard_monthly",
+          "productID" : "trapfinder_standard_v1",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Standard Monthly",
           "subscriptionGroupID" : "21535072",
@@ -113,7 +113,7 @@
               "locale" : "ja"
             }
           ],
-          "productID" : "pro_monthly",
+          "productID" : "trapfinder_pro_v1",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Pro Monthly",
           "subscriptionGroupID" : "21535072",
