@@ -4,14 +4,21 @@ import UIKit
 import Combine
 
 /// Google AdMobのリワード広告を管理するクラス
-@MainActor
 class AdMobManager: NSObject, ObservableObject {
     static let shared = AdMobManager()
     
-    @Published var isAdReady = false
-    @Published var isLoadingAd = false
+    // ObservableObjectの要件を満たすために明示的に定義
+    let objectWillChange = PassthroughSubject<Void, Never>()
     
-    private var rewardedAd: GADRewardedAd?
+    var isAdReady = false {
+        willSet { objectWillChange.send() }
+    }
+    
+    var isLoadingAd = false {
+        willSet { objectWillChange.send() }
+    }
+    
+    private var rewardedAd: RewardedAd?
     private var onAdDismissed: ((Bool) -> Void)?
     
     // テスト用広告ユニットID（本番環境では実際のIDに置き換える）
@@ -42,7 +49,7 @@ class AdMobManager: NSObject, ObservableObject {
         
         let request = GADRequest()
         
-        GADRewardedAd.load(withAdUnitID: adUnitID, request: request) { [weak self] ad, error in
+        RewardedAd.load(withAdUnitID: adUnitID, request: request) { [weak self] ad, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -90,16 +97,16 @@ class AdMobManager: NSObject, ObservableObject {
     }
 }
 
-// MARK: - GADFullScreenContentDelegate
+// MARK: - FullScreenContentDelegate
 
-extension AdMobManager: GADFullScreenContentDelegate {
+extension AdMobManager: FullScreenContentDelegate {
     /// 広告が表示された
-    func adDidRecordImpression(_ ad: GADFullScreenPresentingAd) {
+    func adDidRecordImpression(_ ad: FullScreenPresentingAd) {
         print("📊 広告インプレッション記録")
     }
     
     /// 広告が閉じられた
-    func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+    func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         print("🚪 広告が閉じられました")
         
         // 報酬を獲得して閉じた場合はtrue
@@ -112,7 +119,7 @@ extension AdMobManager: GADFullScreenContentDelegate {
     }
     
     /// 広告の表示に失敗
-    func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         print("❌ 広告表示エラー: \(error.localizedDescription)")
         onAdDismissed?(false)
         onAdDismissed = nil
