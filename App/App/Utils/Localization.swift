@@ -119,6 +119,9 @@ enum L10n {
     static var limit3perDay: LocalizedString { LocalizedString(ja: "1日3回まで", en: "3 times / day") }
     static var unlimitedWithAds: LocalizedString { LocalizedString(ja: "動画広告視聴で回数無制限", en: "Unlimited scans with video ads") }
     static var noAds: LocalizedString { LocalizedString(ja: "広告非表示", en: "No ads") }
+    static var watchAdToAnalyze: LocalizedString { LocalizedString(ja: "広告を見て解析", en: "Watch Ad to Analyze") }
+    static var adLoadingError: LocalizedString { LocalizedString(ja: "広告の読み込みに失敗しました", en: "Failed to load ad") }
+    static var adNotReady: LocalizedString { LocalizedString(ja: "広告を準備中です...", en: "Preparing ad...") }
     static var charLimit5k: LocalizedString { LocalizedString(ja: "5,000文字まで", en: "Up to 5k chars") }
     static var times: LocalizedString { LocalizedString(ja: "回", en: "times") }
     static var appInfo: LocalizedString { LocalizedString(ja: "アプリ情報", en: "App Info") }

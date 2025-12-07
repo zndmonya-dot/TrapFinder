@@ -15,6 +15,15 @@
 	<!-- ビルド設定（Secrets.xcconfig の OPENAI_API_KEY）を展開 -->
 	<key>OPENAI_API_KEY</key>
 	<string>$(OPENAI_API_KEY)</string>
+	
+	<!-- AdMob App ID（テスト用、本番環境では実際のIDに置き換える） -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+	
+	<!-- App Tracking Transparency（iOS 14以降で広告追跡の許可を求める） -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>あなたに最適な広告を表示するために、トラッキングの許可をお願いします。</string>
+	
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
     <key>UISupportsDocumentBrowser</key>

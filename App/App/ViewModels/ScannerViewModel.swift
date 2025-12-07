@@ -56,6 +56,7 @@ class ScannerViewModel: ObservableObject {
     private let aiService: OpenAIAnalyzing
     private let storeKitService: StoreKitService
     private let webPageHelper: WebPageHelper
+    private let adMobManager: AdMobManager
     private var analysisTask: Task<Void, Never>?
     
     // 進捗表示用のタイマー
@@ -66,13 +67,15 @@ class ScannerViewModel: ObservableObject {
         ocrService: OCRService = .shared,
         openAIService: OpenAIService = .shared,
         storeKitService: StoreKitService = .shared,
-        webPageHelper: WebPageHelper = .shared
+        webPageHelper: WebPageHelper = .shared,
+        adMobManager: AdMobManager = .shared
     ) {
         self.aiService = aiService
         self.ocrService = ocrService
         self.openAIService = openAIService
         self.storeKitService = storeKitService
         self.webPageHelper = webPageHelper
+        self.adMobManager = adMobManager
     }
     
     /// 解析をキャンセル
@@ -470,8 +473,45 @@ class ScannerViewModel: ObservableObject {
             return
         }
         
-        // 直接解析を開始
-        performAnalysis()
+        // 無料プランの場合は広告視聴が必要
+        if storeKitService.currentPlan == .free {
+            showAdAndAnalyze()
+        } else {
+            // 有料プランは直接解析
+            performAnalysis()
+        }
+    }
+    
+    /// 広告を表示してから解析を実行（無料プラン専用）
+    func showAdAndAnalyze() {
+        // 広告の準備状況をチェック
+        guard adMobManager.isAdReady else {
+            flowState = .error(L10n.adNotReady.text)
+            return
+        }
+        
+        // 現在のUIViewControllerを取得
+        guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
+            flowState = .error(L10n.adLoadingError.text)
+            return
+        }
+        
+        // 広告を表示
+        adMobManager.showRewardedAd(from: rootViewController) { [weak self] didEarnReward in
+            guard let self = self else { return }
+            
+            if didEarnReward {
+                // 広告視聴完了後、解析を実行
+                DispatchQueue.main.async {
+                    self.performAnalysis()
+                }
+            } else {
+                // 広告視聴失敗
+                DispatchQueue.main.async {
+                    self.flowState = .error(L10n.adLoadingError.text)
+                }
+            }
+        }
     }
     
     func analyzeWithTruncation() {

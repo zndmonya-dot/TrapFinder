@@ -50,6 +50,7 @@ struct ScannerView: View {
     @StateObject private var viewModel = ScannerViewModel()
     @EnvironmentObject var storeKitService: StoreKitService
     @EnvironmentObject var languageManager: LanguageManager
+    @EnvironmentObject var adMobManager: AdMobManager
     
     @State private var showingSettings = false
     
@@ -309,8 +310,8 @@ struct ScannerContentView: View {
                             viewModel.analyzeContract()
                         } label: {
                             HStack {
-                                Image(systemName: "sparkles")
-                                Text(L10n.analyzeButton.text)
+                                Image(systemName: storeKitService.currentPlan == .free ? "play.rectangle.fill" : "sparkles")
+                                Text(storeKitService.currentPlan == .free ? L10n.watchAdToAnalyze.text : L10n.analyzeButton.text)
                                     .fontWeight(.bold)
                             }
                             .font(.system(.title3, design: .rounded))
@@ -321,6 +322,8 @@ struct ScannerContentView: View {
                             .cornerRadius(20)
                             .shadow(color: Color(hex: "E07A5F").opacity(0.4), radius: 10, x: 0, y: 5)
                         }
+                        .disabled(storeKitService.currentPlan == .free && !adMobManager.isAdReady)
+                        .opacity(storeKitService.currentPlan == .free && !adMobManager.isAdReady ? 0.5 : 1.0)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 30)
                     }
