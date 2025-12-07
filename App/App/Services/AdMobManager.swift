@@ -34,8 +34,8 @@ class AdMobManager: NSObject, ObservableObject {
     
     /// AdMob SDKを初期化
     func initializeAdMob() {
-        GADMobileAds.sharedInstance().start { [weak self] status in
-            print("AdMob初期化完了: \(status.adapterStatusesByClassName)")
+        MobileAds.shared.start { [weak self] _ in
+            print("AdMob初期化完了")
             self?.loadRewardedAd()
         }
     }
@@ -47,9 +47,9 @@ class AdMobManager: NSObject, ObservableObject {
         isLoadingAd = true
         isAdReady = false
         
-        let request = GADRequest()
+        let request = Request()
         
-        RewardedAd.load(withAdUnitID: adUnitID, request: request) { [weak self] ad, error in
+        RewardedAd.load(with: adUnitID, request: request) { [weak self] ad, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -83,7 +83,7 @@ class AdMobManager: NSObject, ObservableObject {
         
         self.onAdDismissed = completion
         
-        rewardedAd.present(fromRootViewController: rootViewController) { [weak self] in
+        rewardedAd.present(from: rootViewController) { [weak self] in
             let reward = rewardedAd.adReward
             print("✅ ユーザーが報酬を獲得: \(reward.amount) \(reward.type)")
             self?.handleRewardEarned()

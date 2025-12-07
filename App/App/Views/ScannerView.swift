@@ -167,6 +167,7 @@ struct ScannerContentView: View {
     @ObservedObject var viewModel: ScannerViewModel
     @EnvironmentObject var storeKitService: StoreKitService
     @EnvironmentObject var languageManager: LanguageManager
+    @EnvironmentObject var adMobManager: AdMobManager
     @Binding var showingSettings: Bool
     
     let bgGradient = LinearGradient(
