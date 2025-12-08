@@ -11,7 +11,7 @@ struct LegalDisclaimerView: View {
             VStack(spacing: 24) {
                 // ヘッダー
                 VStack(spacing: 16) {
-                    Image(systemName: "shield.check.fill") // アイコン変更
+                    Image(systemName: "checkmark.shield.fill") // アイコン変更
                         .font(.system(size: 60))
                         .foregroundColor(Color(hex: "E07A5F")) // テーマカラー
                         .padding(.top, 40)

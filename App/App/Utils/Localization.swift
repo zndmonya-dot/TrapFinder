@@ -174,7 +174,7 @@ enum L10n {
     static var webPageLoadError: LocalizedString { LocalizedString(ja: "ページからテキストを読み取れませんでした。ページが空か、アクセスできない可能性があります。", en: "Failed to read text from the page. The page may be empty or inaccessible.") }
     static var productLoadError: LocalizedString { LocalizedString(ja: "製品情報の取得に失敗しました: %@", en: "Failed to load product information: %@") }
     static var productLoadErrorDebug: LocalizedString { LocalizedString(ja: "製品情報の取得に失敗しました: %@\n\n【開発者向け】\nApp Store Connectで製品を設定しているか確認してください。", en: "Failed to load product information: %@\n\n[For Developers]\nPlease check if products are configured in App Store Connect.") }
-    static var planNotFound: LocalizedString { LocalizedString(ja: "プランが見つかりませんでした。\n\n【開発者向け】\nApp Store Connectで製品ID「standard_monthly」を設定してください。\n\n現在の製品数: %d", en: "Plan not found.\n\n[For Developers]\nPlease configure product ID \"standard_monthly\" in App Store Connect.\n\nCurrent product count: %d") }
+    static var planNotFound: LocalizedString { LocalizedString(ja: "プランが見つかりませんでした。\n\n【開発者向け】\nApp Store Connectで製品ID「trapfinder_standard_v1」を設定してください。\n\n現在の製品数: %d", en: "Plan not found.\n\n[For Developers]\nPlease configure product ID \"trapfinder_standard_v1\" in App Store Connect.\n\nCurrent product count: %d") }
     static var httpError: LocalizedString { LocalizedString(ja: "HTTPエラー: %d", en: "HTTP Error: %d") }
     
     // Legal Disclaimer

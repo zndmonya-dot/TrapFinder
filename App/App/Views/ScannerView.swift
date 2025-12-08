@@ -268,7 +268,7 @@ struct ScannerContentView: View {
                             }
                             
                             HStack(spacing: 8) {
-                                Image(systemName: "shield.check.fill")
+                                Image(systemName: "checkmark.shield.fill")
                                     .foregroundColor(Color(hex: "81B29A"))
                                 Text(L10n.dataPrivacy.text)
                                     .font(.system(size: 12, weight: .medium, design: .rounded))
