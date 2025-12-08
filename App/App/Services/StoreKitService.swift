@@ -70,7 +70,7 @@ class StoreKitService: NSObject, ObservableObject {
     private let lastScanDateKey = "lastScanDate"
     
     // 製品ID（App Store Connectで設定する必要がある）
-    private let productIDs = ["standard_monthly", "pro_monthly"]
+    private let productIDs = [PlanConfiguration.standardPlanID, PlanConfiguration.proPlanID]
     
     // トランザクション更新の監視タスク
     private var updateListenerTask: Task<Void, Error>?
@@ -153,7 +153,7 @@ class StoreKitService: NSObject, ObservableObject {
             if products.isEmpty {
                 print("⚠️ [StoreKitService] 製品が見つかりませんでした。")
                 print("   App Store Connectで以下の製品IDを設定してください:")
-                print("   - standard_monthly")
+                print("   - \(PlanConfiguration.standardPlanID)")
             } else {
                 print("✅ [StoreKitService] \(products.count)個の製品を読み込みました")
                 for product in products {
@@ -255,7 +255,7 @@ class StoreKitService: NSObject, ObservableObject {
             return
         }
         
-        guard let product = availableProducts.first(where: { $0.id == "standard_monthly" }) else {
+        guard let product = availableProducts.first(where: { $0.id == PlanConfiguration.standardPlanID }) else {
             #if DEBUG
             errorMessage = String(format: L10n.planNotFound.text, availableProducts.count)
             #else
