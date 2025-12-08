@@ -2,3 +2,4 @@ App/App/Config/AppConfig.swift
 App/App/Config/Secrets.xcconfig
 App/Config/Secrets.xcconfig
 **/Secrets.xcconfig
+*.xcuserstate
