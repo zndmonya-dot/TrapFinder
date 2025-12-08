@@ -11,26 +11,26 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		4EE749802ED3371A00C41D03 /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4EE749802ED3371A00C41D03 /* TrapFinder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TrapFinder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4E73B9E42EDB45F3009063E6 /* Exceptions for "App" folder in "App" target */ = {
+		4E73B9E42EDB45F3009063E6 /* Exceptions for "TrapFinder" folder in "TrapFinder" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 4EE7497F2ED3371A00C41D03 /* App */;
+			target = 4EE7497F2ED3371A00C41D03 /* TrapFinder */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4EE749822ED3371A00C41D03 /* App */ = {
+		4EE749822ED3371A00C41D03 /* TrapFinder */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4E73B9E42EDB45F3009063E6 /* Exceptions for "App" folder in "App" target */,
+				4E73B9E42EDB45F3009063E6 /* Exceptions for "TrapFinder" folder in "TrapFinder" target */,
 			);
-			path = App;
+			path = TrapFinder;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -50,7 +50,7 @@
 		4EE749772ED3371A00C41D03 = {
 			isa = PBXGroup;
 			children = (
-				4EE749822ED3371A00C41D03 /* App */,
+				4EE749822ED3371A00C41D03 /* TrapFinder */,
 				4EE749812ED3371A00C41D03 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -58,7 +58,7 @@
 		4EE749812ED3371A00C41D03 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4EE749802ED3371A00C41D03 /* App.app */,
+				4EE749802ED3371A00C41D03 /* TrapFinder.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,9 +66,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4EE7497F2ED3371A00C41D03 /* App */ = {
+		4EE7497F2ED3371A00C41D03 /* TrapFinder */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4EE7498B2ED3371B00C41D03 /* Build configuration list for PBXNativeTarget "App" */;
+			buildConfigurationList = 4EE7498B2ED3371B00C41D03 /* Build configuration list for PBXNativeTarget "TrapFinder" */;
 			buildPhases = (
 				4EE7497C2ED3371A00C41D03 /* Sources */,
 				4EE7497D2ED3371A00C41D03 /* Frameworks */,
@@ -79,14 +79,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4EE749822ED3371A00C41D03 /* App */,
+				4EE749822ED3371A00C41D03 /* TrapFinder */,
 			);
-			name = App;
+			name = TrapFinder;
 			packageProductDependencies = (
 				4E30193F2EE55F8600D30066 /* GoogleMobileAds */,
 			);
 			productName = App;
-			productReference = 4EE749802ED3371A00C41D03 /* App.app */;
+			productReference = 4EE749802ED3371A00C41D03 /* TrapFinder.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -104,7 +104,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 4EE7497B2ED3371A00C41D03 /* Build configuration list for PBXProject "App" */;
+			buildConfigurationList = 4EE7497B2ED3371A00C41D03 /* Build configuration list for PBXProject "TrapFinder" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -122,7 +122,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4EE7497F2ED3371A00C41D03 /* App */,
+				4EE7497F2ED3371A00C41D03 /* TrapFinder */,
 			);
 		};
 /* End PBXProject section */
@@ -150,7 +150,7 @@
 /* Begin XCBuildConfiguration section */
 		4EE749892ED3371B00C41D03 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* App */;
+			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* TrapFinder */;
 			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -216,7 +216,7 @@
 		};
 		4EE7498A2ED3371B00C41D03 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* App */;
+			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* TrapFinder */;
 			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -275,7 +275,7 @@
 		};
 		4EE7498C2ED3371B00C41D03 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* App */;
+			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* TrapFinder */;
 			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -285,7 +285,7 @@
 				DEVELOPMENT_TEAM = 32D69DQUAK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_FILE = TrapFinder/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "書類をスキャンするためにカメラを使用します";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -311,7 +311,7 @@
 		};
 		4EE7498D2ED3371B00C41D03 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* App */;
+			baseConfigurationReferenceAnchor = 4EE749822ED3371A00C41D03 /* TrapFinder */;
 			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -321,7 +321,7 @@
 				DEVELOPMENT_TEAM = 32D69DQUAK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_FILE = TrapFinder/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "書類をスキャンするためにカメラを使用します";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -348,7 +348,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4EE7497B2ED3371A00C41D03 /* Build configuration list for PBXProject "App" */ = {
+		4EE7497B2ED3371A00C41D03 /* Build configuration list for PBXProject "TrapFinder" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4EE749892ED3371B00C41D03 /* Debug */,
@@ -357,7 +357,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4EE7498B2ED3371B00C41D03 /* Build configuration list for PBXNativeTarget "App" */ = {
+		4EE7498B2ED3371B00C41D03 /* Build configuration list for PBXNativeTarget "TrapFinder" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4EE7498C2ED3371B00C41D03 /* Debug */,
