@@ -10,7 +10,7 @@ struct TermsView: View {
                     .padding(.bottom, 8)
                 
                 Text("""
-                最終更新日: 2024年12月7日
+                最終更新日: 2025年12月8日
                 
                 TrapFinder利用規約
                 
@@ -142,7 +142,7 @@ struct PrivacyPolicyView: View {
                     .padding(.bottom, 8)
                 
                 Text("""
-                最終更新日: 2024年12月7日
+                最終更新日: 2025年12月8日
                 
                 TrapFinder（以下「本アプリ」）は、ユーザーのプライバシーを尊重し、個人情報の保護に努めます。本プライバシーポリシーは、本アプリがどのような情報を収集し、どのように使用するかを説明するものです。
                 
