@@ -5,81 +5,124 @@ struct LegalDisclaimerView: View {
     @EnvironmentObject var languageManager: LanguageManager
     
     var body: some View {
-        ZStack {
-            Color(hex: "FFF8F0").ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                // ヘッダー
-                VStack(spacing: 16) {
-                    Image(systemName: "checkmark.shield.fill") // アイコン変更
-                        .font(.system(size: 60))
-                        .foregroundColor(Color(hex: "E07A5F")) // テーマカラー
-                        .padding(.top, 40)
-                    
-                    Text(L10n.legalTitle.text)
-                        .font(.system(.title, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundColor(Color(hex: "3D405B"))
-                        .multilineTextAlignment(.center)
-                }
+        NavigationView {
+            ZStack {
+                Color(hex: "FFF8F0").ignoresSafeArea()
                 
-                // コンテンツ
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        DisclaimerItem(
-                            title: L10n.legalHeader1.text,
-                            content: L10n.legalText1.text,
-                            icon: "doc.text.magnifyingglass"
-                        )
+                VStack(spacing: 24) {
+                    // ヘッダー
+                    VStack(spacing: 16) {
+                        Image(systemName: "checkmark.shield.fill") // アイコン変更
+                            .font(.system(size: 60))
+                            .foregroundColor(Color(hex: "E07A5F")) // テーマカラー
+                            .padding(.top, 40)
                         
-                        DisclaimerItem(
-                            title: L10n.legalHeader2.text,
-                            content: L10n.legalText2.text,
-                            icon: "person.fill.checkmark"
-                        )
-                        
-                        DisclaimerItem(
-                            title: L10n.legalHeader3.text,
-                            content: L10n.legalText3.text,
-                            icon: "gavel.fill"
-                        )
-                        
-                        DisclaimerItem(
-                            title: L10n.legalHeader4.text,
-                            content: L10n.legalText4.text,
-                            icon: "lock.fill"
-                        )
-                        
-                        DisclaimerItem(
-                            title: L10n.legalHeader5.text,
-                            content: L10n.legalText5.text,
-                            icon: "doc.text.fill"
-                        )
+                        Text(L10n.legalTitle.text)
+                            .font(.system(.title, design: .rounded))
+                            .fontWeight(.bold)
+                            .foregroundColor(Color(hex: "3D405B"))
+                            .multilineTextAlignment(.center)
                     }
-                    .padding(24)
+                    
+                    // コンテンツ
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            DisclaimerItem(
+                                title: L10n.legalHeader1.text,
+                                content: L10n.legalText1.text,
+                                icon: "doc.text.magnifyingglass"
+                            )
+                            
+                            DisclaimerItem(
+                                title: L10n.legalHeader2.text,
+                                content: L10n.legalText2.text,
+                                icon: "person.fill.checkmark"
+                            )
+                            
+                            DisclaimerItem(
+                                title: L10n.legalHeader3.text,
+                                content: L10n.legalText3.text,
+                                icon: "gavel.fill"
+                            )
+                            
+                            DisclaimerItem(
+                                title: L10n.legalHeader4.text,
+                                content: L10n.legalText4.text,
+                                icon: "lock.fill"
+                            )
+                            
+                            VStack(alignment: .leading, spacing: 16) {
+                                DisclaimerItem(
+                                    title: L10n.legalHeader5.text,
+                                    content: L10n.legalText5.text,
+                                    icon: "doc.text.fill"
+                                )
+                                
+                                // 法的文書へのリンクボタン
+                                HStack(spacing: 16) {
+                                    NavigationLink {
+                                        TermsView()
+                                            .navigationTitle(L10n.terms.text)
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "doc.text")
+                                            Text(L10n.terms.text)
+                                        }
+                                        .font(.system(.subheadline, design: .rounded))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(Color(hex: "E07A5F"))
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 16)
+                                        .background(Color(hex: "E07A5F").opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
+                                    
+                                    NavigationLink {
+                                        PrivacyPolicyView()
+                                            .navigationTitle(L10n.privacy.text)
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "hand.raised")
+                                            Text(L10n.privacy.text)
+                                        }
+                                        .font(.system(.subheadline, design: .rounded))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(Color(hex: "E07A5F"))
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 16)
+                                        .background(Color(hex: "E07A5F").opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
+                                }
+                                .padding(.leading, 40) // アイコンの幅分インデント
+                            }
+                        }
+                        .padding(24)
+                    }
+                    .background(Color.white)
+                    .cornerRadius(24)
+                    .shadow(color: Color(hex: "E07A5F").opacity(0.1), radius: 10, x: 0, y: 5)
+                    .padding(.horizontal, 20)
+                    
+                    // 同意ボタン
+                    Button(action: {
+                        hasAgreed = true
+                    }) {
+                        Text(L10n.agreeButton.text)
+                            .font(.system(.headline, design: .rounded))
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color(hex: "E07A5F"))
+                            .foregroundColor(.white)
+                            .cornerRadius(16)
+                            .shadow(color: Color(hex: "E07A5F").opacity(0.4), radius: 10, x: 0, y: 5)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 30)
                 }
-                .background(Color.white)
-                .cornerRadius(24)
-                .shadow(color: Color(hex: "E07A5F").opacity(0.1), radius: 10, x: 0, y: 5)
-                .padding(.horizontal, 20)
-                
-                // 同意ボタン
-                Button(action: {
-                    hasAgreed = true
-                }) {
-                    Text(L10n.agreeButton.text)
-                        .font(.system(.headline, design: .rounded))
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color(hex: "E07A5F"))
-                        .foregroundColor(.white)
-                        .cornerRadius(16)
-                        .shadow(color: Color(hex: "E07A5F").opacity(0.4), radius: 10, x: 0, y: 5)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 30)
             }
+            .navigationBarHidden(true)
         }
     }
 }

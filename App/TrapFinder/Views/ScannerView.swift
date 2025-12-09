@@ -70,22 +70,20 @@ struct ScannerView: View {
                 switch sheet {
                 case .analysisResult:
                     // analysisResultがnilの場合はシートを表示しない
-                if let result = viewModel.analysisResult {
-                    AnalysisResultView(result: result)
+                    if let result = viewModel.analysisResult {
+                        AnalysisResultView(result: result)
                     } else {
                         // analysisResultがnilの場合は何も表示しない（シートは自動的に閉じる）
                         EmptyView()
-                }
+                    }
                 case .imagePicker:
-                ImagePicker(onImagesPicked: { images in
-                    viewModel.handleImageSelection(images: images)
-                })
+                    ImagePicker(onImagesPicked: { images in
+                        viewModel.handleImageSelection(images: images)
+                    })
                 case .textInput:
                     TextInputView(text: $viewModel.scannedText, characterLimit: storeKitService.currentPlan.characterLimit)
                 case .urlInput:
                     URLInputView(viewModel: viewModel)
-                case .paywall:
-                    PaywallView()
                 case .cameraAlert, .tokenLimitAlert:
                     // これらは.alertで表示されるため、.sheetでは何も表示しない
                     EmptyView()
@@ -139,9 +137,7 @@ struct ScannerView: View {
                 set: { _ in viewModel.activeSheet = nil }
             )) { _ in
                 let characterLimit = storeKitService.currentPlan.characterLimit
-                let formattedLimit = characterLimit >= 10000 
-                    ? String(format: "%.0f万", Double(characterLimit) / 10000.0)
-                    : String(format: "%d", characterLimit)
+                let formattedLimit = formatCharacterLimit(characterLimit, language: languageManager.currentLanguage)
                 let messageText = languageManager.currentLanguage == .japanese
                     ? "読み取った文字数が\(formattedLimit)文字を超えています。\nすべて解析すると時間がかかり、エラーになる可能性があります。\n\n先頭の\(formattedLimit)文字だけ解析しますか？"
                     : "The scanned text exceeds \(characterLimit) characters.\nAnalyzing all of it may take time and could cause errors.\n\nWould you like to analyze only the first \(characterLimit) characters?"
@@ -311,8 +307,8 @@ struct ScannerContentView: View {
                             viewModel.analyzeContract()
                         } label: {
                             HStack {
-                                Image(systemName: storeKitService.currentPlan == .free ? "play.rectangle.fill" : "sparkles")
-                                Text(storeKitService.currentPlan == .free ? L10n.watchAdToAnalyze.text : L10n.analyzeButton.text)
+                                Image(systemName: "sparkles")
+                                Text(L10n.analyzeButton.text)
                                     .fontWeight(.bold)
                             }
                             .font(.system(.title3, design: .rounded))
@@ -609,9 +605,7 @@ struct TextInputView: View {
     @EnvironmentObject var languageManager: LanguageManager
     
     private var limitText: String {
-        let formattedLimit = characterLimit >= 10000 
-            ? String(format: "%.0f万", Double(characterLimit) / 10000.0)
-            : String(format: "%d", characterLimit)
+        let formattedLimit = formatCharacterLimit(characterLimit, language: languageManager.currentLanguage)
         return languageManager.currentLanguage == .japanese
             ? "※\(formattedLimit)文字まで入力可能です"
             : "※Up to \(characterLimit) characters can be entered"
@@ -683,7 +677,7 @@ struct LoadingOverlay: View {
     var body: some View {
         ZStack {
             Color(hex: "FFF8F0").opacity(0.9)
-                .ignoresSafeArea()
+            .ignoresSafeArea()
             
             VStack(spacing: 24) {
                 ProgressView()
@@ -799,5 +793,14 @@ struct ImagePicker: UIViewControllerRepresentable {
                 self.parent.onImagesPicked(sortedImages)
             }
         }
+    }
+}
+
+/// 文字数上限を言語別にフォーマット
+private func formatCharacterLimit(_ limit: Int, language: Language) -> String {
+    if language == .japanese, limit >= 10_000 {
+        return String(format: "%.0f万", Double(limit) / 10_000.0)
+    } else {
+        return "\(limit)"
     }
 }

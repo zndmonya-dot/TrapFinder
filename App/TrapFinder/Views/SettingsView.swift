@@ -3,7 +3,6 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var storeKitService: StoreKitService
     @EnvironmentObject var languageManager: LanguageManager
-    @State private var showingPaywall = false
     @Environment(\.presentationMode) var presentationMode
     
     // トップ画面と同じ背景グラデーション
@@ -13,23 +12,6 @@ struct SettingsView: View {
         endPoint: .bottomTrailing
     )
     
-    #if DEBUG
-    // デバッグ用: サブスクリプション状態をリセット
-    private func resetSubscription() {
-        // StoreKitServiceの状態を更新
-        Task {
-            await storeKitService.updateSubscriptionStatus()
-            
-            // メインスレッドで確認メッセージを表示
-            await MainActor.run {
-                let plan = storeKitService.currentPlan
-                let planName = plan == .free ? "フリープラン" : plan == .standard ? "スタンダードプラン" : "プロプラン"
-                print("✅ サブスクリプション状態を更新: \(planName)")
-            }
-        }
-    }
-    #endif
-    
     var body: some View {
         NavigationView {
             ZStack {
@@ -37,21 +19,6 @@ struct SettingsView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // サブスクリプションセクション
-                        SettingsSection(title: L10n.planManagement.text) {
-                            Button {
-                                showingPaywall = true
-                            } label: {
-                                SettingsRow(
-                                    icon: "creditcard.fill",
-                                    title: L10n.planManagement.text,
-                                    value: storeKitService.currentPlan == .standard ? L10n.standardPlan.text : L10n.freePlan.text,
-                                    iconColor: Color(hex: "2A9D8F"), // エメラルドグリーン
-                                    showDivider: false
-                                )
-                            }
-                        }
-                        
                         // 一般設定セクション
                         SettingsSection(title: L10n.general.text) {
                             NavigationLink {
@@ -108,22 +75,6 @@ struct SettingsView: View {
                             )
                         }
                         
-                        #if DEBUG
-                        // デバッグセクション（開発環境のみ）
-                        SettingsSection(title: "🔧 デバッグ") {
-                            Button {
-                                resetSubscription()
-                            } label: {
-                                SettingsRow(
-                                    icon: "arrow.counterclockwise",
-                                    title: "サブスクリプションをリセット",
-                                    iconColor: Color.red,
-                                    showDivider: false
-                                )
-                            }
-                        }
-                        #endif
-                        
                         Spacer(minLength: 40)
                     }
                     .padding(.vertical, 24) // 全体のpaddingを変更
@@ -146,9 +97,6 @@ struct SettingsView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingPaywall) {
-                PaywallView()
-            }
         }
         // 言語変更時にテキストを更新するため、NavigationViewの外でIDを設定
         .onChange(of: languageManager.currentLanguage) { _, _ in
@@ -157,9 +105,7 @@ struct SettingsView: View {
     }
 }
 
-// PlanSettingsView は不要になったため削除
-// PlanStatusCard も PaywallView で代用するため削除してもよいが、将来のために残すか、あるいはPaywallViewのデザインに統一するか。
-// 今回はPaywallViewを直接呼ぶので、ここにあるPlanSettingsViewは削除します。
+// ※基本無料・広告収入のみの仕様のため、プラン管理機能は不要です
 
 struct SettingsSection<Content: View>: View {
     let title: String
@@ -222,8 +168,8 @@ struct SettingsRow: View {
                 
                 if showChevron {
                     Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(Color(hex: "3D405B").opacity(0.3))
+                    .font(.caption)
+                    .foregroundColor(Color(hex: "3D405B").opacity(0.3))
                 }
             }
             .padding(.vertical, 12)

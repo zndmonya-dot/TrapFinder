@@ -27,6 +27,7 @@ class AdMobManager: NSObject, ObservableObject {
     // MARK: - Constants
     
     private enum AdConstants {
+        // 本番広告ユニット（デバッグ／リリース共通で使用）
         static let adUnitID = "ca-app-pub-2477585454032901/5825870847"
         static let maxRetries = 3
         static let retryDelay: TimeInterval = 5.0
@@ -57,7 +58,7 @@ class AdMobManager: NSObject, ObservableObject {
     #if DEBUG
     private func configureTestDevices() {
         MobileAds.shared.requestConfiguration.testDeviceIdentifiers = AdConstants.testDeviceIDs
-        print("🔧 テストデバイスIDを設定しました")
+        print("🔧 テストデバイスIDを設定しました: \(AdConstants.testDeviceIDs)")
     }
     #endif
     
@@ -108,13 +109,10 @@ class AdMobManager: NSObject, ObservableObject {
         print("   エラー詳細: \(error)")
         rewardedAd = nil
         isAdReady = false
-        
-        #if DEBUG
+
         attemptRetryIfPossible()
-        #endif
     }
     
-    #if DEBUG
     private func attemptRetryIfPossible() {
         guard adLoadRetryCount < AdConstants.maxRetries else {
             print("⚠️ 広告の読み込みリトライ上限に達しました")
@@ -134,11 +132,6 @@ class AdMobManager: NSObject, ObservableObject {
         print("📡 リワード広告を読み込み中... (試行: \(adLoadRetryCount + 1)/\(AdConstants.maxRetries + 1))")
         print("   広告ユニットID: \(AdConstants.adUnitID)")
     }
-    #else
-    private func logAdLoadAttempt() {
-        print("📡 リワード広告を読み込み中...")
-    }
-    #endif
     
     // MARK: - Ad Presentation
     

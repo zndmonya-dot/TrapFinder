@@ -18,7 +18,6 @@ enum ActiveSheet: Identifiable {
     case imagePicker
     case textInput
     case urlInput
-    case paywall
     case cameraAlert
     case tokenLimitAlert
     
@@ -28,9 +27,8 @@ enum ActiveSheet: Identifiable {
         case .imagePicker: return 2
         case .textInput: return 3
         case .urlInput: return 4
-        case .paywall: return 5
-        case .cameraAlert: return 6
-        case .tokenLimitAlert: return 7
+        case .cameraAlert: return 5
+        case .tokenLimitAlert: return 6
         }
     }
 }
@@ -473,82 +471,14 @@ class ScannerViewModel: ObservableObject {
             return
         }
         
-        // 無料プランの場合は広告視聴が必要
-        if storeKitService.currentPlan == .free {
-            showAdAndAnalyze()
-        } else {
-            // 有料プランは直接解析
-            performAnalysis()
-        }
-    }
-    
-    // MARK: - Ad-Related Analysis
-    
-    /// 広告を表示してから解析を実行（無料プラン専用）
-    func showAdAndAnalyze() {
-        #if DEBUG
-        guard adMobManager.isAdReady else {
-            handleAdNotReadyInDebug()
-            return
-        }
-        #else
-        guard adMobManager.isAdReady else {
-            flowState = .error(L10n.adNotReady.text)
-            return
-        }
-        #endif
-        
-        guard let rootViewController = getRootViewController() else {
-            flowState = .error(L10n.adLoadingError.text)
-            return
-        }
-        
-        presentAdAndAnalyze(from: rootViewController)
-    }
-    
-    #if DEBUG
-    private func handleAdNotReadyInDebug() {
-        print("🔧 DEBUG: 広告が準備できていないため、広告をスキップして解析を実行します")
-        print("💡 ヒント: AdMobの審査が完了するまで数時間かかる場合があります")
-        performAnalysis()
-    }
-    #endif
-    
-    private func getRootViewController() -> UIViewController? {
-        UIApplication.shared.windows.first?.rootViewController
-    }
-    
-    private func presentAdAndAnalyze(from viewController: UIViewController) {
-        adMobManager.showRewardedAd(from: viewController) { [weak self] didEarnReward in
-            self?.handleAdResult(didEarnReward: didEarnReward)
-        }
-    }
-    
-    private func handleAdResult(didEarnReward: Bool) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            #if DEBUG
-            // デバッグ環境: 成功/失敗に関わらず解析を実行
-            if !didEarnReward {
-                print("🔧 DEBUG: 広告表示に失敗しましたが、解析を続行します")
-            }
-            self.performAnalysis()
-            #else
-            // 本番環境: 成功時のみ解析を実行
-            if didEarnReward {
-                self.performAnalysis()
-            } else {
-                self.flowState = .error(L10n.adLoadingError.text)
-            }
-            #endif
-        }
+        // 基本無料・広告収入のみの仕様のため、常に広告視聴と同時に解析を実行（裏で進める）
+        performAnalysisWithAd()
     }
     
     func analyzeWithTruncation() {
         let limit = storeKitService.currentPlan.characterLimit
         let truncatedText = String(scannedText.prefix(limit))
-        performAnalysis(textOverride: truncatedText)
+        performAnalysisWithAd(textOverride: truncatedText)
     }
     
     private func exceedsCharacterLimit(_ text: String) -> Bool {
@@ -563,60 +493,78 @@ class ScannerViewModel: ObservableObject {
         return (limited, true)
     }
     
-    private func performAnalysis(textOverride: String? = nil) {
-        #if !DEBUG
-        // 本番環境でのみプランチェック
-        if !storeKitService.canScan {
-            activeSheet = .paywall
-            return
+    // MARK: - Analysis Logic
+    
+    /// AI解析を実行するコアロジック（UI操作なし）
+    private func executeAnalysis(text: String, model: String) async throws -> AnalysisResult {
+        return try await aiService.analyzeContract(text: text, model: model)
+    }
+    
+    /// 広告再生を待ち受ける
+    private func waitForAdPlayback() async -> Bool {
+        // 広告準備チェック
+        #if DEBUG
+        if !adMobManager.isAdReady {
+            print("🔧 DEBUG: 広告が準備できていないためスキップします")
+            return true
+        }
+        #else
+        if !adMobManager.isAdReady {
+            // 本番では準備できていないとエラーになるが、ここではfalseを返して呼び出し元でハンドリングする
+            // あるいはリトライを待つなどの戦略もありうるが、今回はシンプルに
+            return false
         }
         #endif
         
-        flowState = .analyzing
+        guard let rootViewController = getRootViewController() else { return false }
         
-        // 進捗タイマーを開始
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                self.adMobManager.showRewardedAd(from: rootViewController) { result in
+                    continuation.resume(returning: result)
+                }
+            }
+        }
+    }
+    
+    /// 広告再生と解析を並行して実行する
+    private func performAnalysisWithAd(textOverride: String? = nil) {
+        flowState = .analyzing
         startProgressTimer()
         
         let textToAnalyze = textOverride ?? scannedText
-        
-        // AIモデルの決定ロジック
-        // プロプランの制限に達した場合は、スタンダードプランのAIモデルに自動切り替え
-        let model: String
-        if storeKitService.currentPlan == .pro {
-            // プロプランの場合、制限に達しているかチェック
-            if storeKitService.currentPlan.dailyLimit != -1 && 
-               storeKitService.scanCountToday >= storeKitService.currentPlan.dailyLimit {
-                // プロプランの制限に達した場合、スタンダードプランのAIモデル（gpt-4o-mini）を使用
-                model = UserPlan.standard.aiModel
-            } else {
-                // プロプランの制限内の場合、プロプランのAIモデル（gpt-4o）を使用
-                model = storeKitService.currentPlan.aiModel
-            }
-        } else {
-            // フリープラン・スタンダードプランの場合、通常のAIモデルを使用
-            model = storeKitService.currentPlan.aiModel
-        }
+        let model = determineAIModel()
         
         analysisTask?.cancel()
         analysisTask = Task { [weak self] in
             guard let self else { return }
+            
+            // async let を使って並列実行
+            async let analysisResult = executeAnalysis(text: textToAnalyze, model: model)
+            async let adResult = waitForAdPlayback()
+            
             do {
-                let analysis = try await aiService.analyzeContract(text: textToAnalyze, model: model)
+                // 両方の完了を待つ
+                // 先に広告が終われば解析待ち、先に解析が終われば広告待ちになる
+                let (analysis, adSuccess) = try await (analysisResult, adResult)
+                
                 await MainActor.run {
-                self.stopProgressTimer()
-                    self.flowState = .idle
-                    // analysisResultを先に設定してから、activeSheetを設定
-                    self.analysisResult = analysis
-                    // SwiftUIの状態更新を確実にするため、次のランループでシートを表示
-                    Task { @MainActor in
-                        // 次のランループまで待機（SwiftUIの状態更新を確実にする）
-                        await Task.yield()
-                        // analysisResultが設定されていることを再確認してからシートを表示
-                        if self.analysisResult != nil {
-                            self.activeSheet = .analysisResult
-                        }
+                    self.stopProgressTimer()
+                    
+                    if adSuccess {
+                        self.handleAnalysisSuccess(analysis)
+                    } else {
+                        // 広告再生失敗またはキャンセル
+                        // 解析自体は成功しているが、広告を見ていないのでエラーとするか？
+                        // ユーザー体験的には「広告が見れませんでした」と出して解析結果は見せないのが正しい（リワードなので）
+                        #if DEBUG
+                        // デバッグ時は広告失敗しても見せる
+                        print("🔧 DEBUG: 広告失敗したが解析結果を表示")
+                        self.handleAnalysisSuccess(analysis)
+                        #else
+                        self.flowState = .error(L10n.adLoadingError.text)
+                        #endif
                     }
-                    self.storeKitService.incrementScanCount()
                 }
             } catch is CancellationError {
                 await MainActor.run {
@@ -626,30 +574,50 @@ class ScannerViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.stopProgressTimer()
-                    #if DEBUG
-                    print("[ScannerViewModel] ===== Analysis Error =====")
-                    print("[ScannerViewModel] Error type: \(type(of: error))")
-                    print("[ScannerViewModel] Error: \(error)")
-                    if let localizedError = error as? LocalizedError {
-                        print("[ScannerViewModel] Error description: \(localizedError.errorDescription ?? "なし")")
-                        print("[ScannerViewModel] Error reason: \(localizedError.failureReason ?? "なし")")
-                        print("[ScannerViewModel] Error recovery: \(localizedError.recoverySuggestion ?? "なし")")
-                    }
-                    print("[ScannerViewModel] =========================")
-                    #endif
-                    
-                    // エラーメッセージを生成
-                    var errorMsg: String
-                    if let localizedError = error as? LocalizedError, let description = localizedError.errorDescription {
-                        errorMsg = description
-                    } else {
-                        errorMsg = String(format: L10n.analysisErrorWithDescription.text, error.localizedDescription)
-                    }
-                    
-                    self.flowState = .error(errorMsg)
+                    self.handleAnalysisError(error)
                 }
             }
         }
+    }
+    
+    
+    private func determineAIModel() -> String {
+        // 基本無料・広告収入のみの仕様のため、常にFreeプランのAIモデル（gpt-4o-mini）を使用
+        return UserPlan.free.aiModel
+    }
+    
+    private func handleAnalysisSuccess(_ analysis: AnalysisResult) {
+        self.flowState = .idle
+        self.analysisResult = analysis
+        
+        // SwiftUIの状態更新を確実にするため、次のランループでシートを表示
+        Task { @MainActor in
+            await Task.yield()
+            if self.analysisResult != nil {
+                self.activeSheet = .analysisResult
+            }
+        }
+    }
+    
+    private func handleAnalysisError(_ error: Error) {
+        #if DEBUG
+        print("[ScannerViewModel] ===== Analysis Error =====")
+        print("[ScannerViewModel] Error type: \(type(of: error))")
+        print("[ScannerViewModel] Error: \(error)")
+        if let localizedError = error as? LocalizedError {
+            print("[ScannerViewModel] Error description: \(localizedError.errorDescription ?? "なし")")
+        }
+        print("[ScannerViewModel] =========================")
+        #endif
+        
+        var errorMsg: String
+        if let localizedError = error as? LocalizedError, let description = localizedError.errorDescription {
+            errorMsg = description
+        } else {
+            errorMsg = String(format: L10n.analysisErrorWithDescription.text, error.localizedDescription)
+        }
+        
+        self.flowState = .error(errorMsg)
     }
     
     func handleFileImport(result: Result<[URL], Error>) {
@@ -688,6 +656,13 @@ class ScannerViewModel: ObservableObject {
         return url
     }
     
+    private func getRootViewController() -> UIViewController? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }?
+            .rootViewController
+    }
     
     private func errorMessage(from error: Error) -> String {
         if let localizedError = error as? LocalizedError, let description = localizedError.errorDescription {
