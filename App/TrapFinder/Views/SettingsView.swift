@@ -68,7 +68,7 @@ struct SettingsView: View {
                             SettingsRow(
                                 icon: "info.circle.fill",
                                 title: L10n.version.text,
-                                value: "1.0.0",
+                                value: "1.0",
                                 iconColor: Color(hex: "3D405B"),
                                 showChevron: false,
                                 showDivider: false
