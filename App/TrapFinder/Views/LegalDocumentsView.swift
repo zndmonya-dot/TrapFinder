@@ -188,7 +188,7 @@ struct PrivacyPolicyView: View {
                 
                 6. お問い合わせ
                 
-                プライバシーに関するご質問は、App Storeのアプリページからお問い合わせいただくか、support@trapfinder.app までご連絡ください。
+                プライバシーに関するご質問は、App Storeのアプリページからお問い合わせいただくか、zndmonya@gmail.com までご連絡ください。
                 
                 7. プライバシーポリシーの変更
                 
